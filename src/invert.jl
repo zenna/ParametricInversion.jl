@@ -122,11 +122,10 @@ end
   m = IRTools.meta(TS)
   fwdir = IRTools.IR(m)
   invir = invert(fwdir)
-  argnames_ = [Symbol("self"), :f, :t, :arg, :φ]
+  argnames_ = [Symbol("#self#"), :f, :t, :arg, :φ]
   ci = code_lowered(dummy, Tuple{})[1]
   ci.slotnames = [argnames_...]
-  invir = slots!(pis!(inlineable!(invir)))
-  update!(ci, invir)
+  return update!(ci, invir)
 end 
 
 #### Questions
