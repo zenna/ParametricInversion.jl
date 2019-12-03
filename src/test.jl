@@ -5,6 +5,16 @@ function f_easy(x, y, z)
   b = a * z
 end
 
+f_easy2(x, y, z) = x * y + z
+
+function f_easy3(x, y, z)
+  a = x * y + z
+end
+
+function f_easy4(x, y, z)
+  x * y + z
+end
+
 # Single Block
 function g(x)
   2 * x
