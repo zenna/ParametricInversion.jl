@@ -1,3 +1,10 @@
+# invdupl(x1) = x1
+# invdupl(x1, x2) = x1
+# invdupl(x1, x2, x3) = x1
+# invdupl(x1, x2, x3, x4) = x1
+# invdupl(x1, x2, x3, x4, x5) = x1
+
+invdupl(xs...) = (@show(xs); first(xs))
 
 dupl2(x) = (x, x)
 dupl3(x) = (x, x, x)
