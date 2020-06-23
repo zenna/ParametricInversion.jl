@@ -1,0 +1,4 @@
+name = "ParametricInversionTestUtils"
+uuid = "c9df7d97-9b3b-4ef1-a62f-8dc2fdc1a53b"
+authors = ["Zenna Tavares <zennatavares@gmail.com>"]
+version = "0.1.0"

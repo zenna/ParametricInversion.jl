@@ -15,6 +15,9 @@ using IRTools.Inner: argnames!, update!, argument!
 export invertapply
 # using ZenUtils
 
+include("util.jl")
+using .Util
+
 include("duplify.jl")
 include("invert.jl")
 include("param.jl")

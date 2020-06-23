@@ -1,4 +1,5 @@
 using ParametricInversion
+using ParametricInversionTestUtils
 using Test
 
 @testset "ParametricInversion.jl" begin

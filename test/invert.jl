@@ -1,10 +1,10 @@
 using Test
 using ParametricInversion
-using ParametricInversionTestFuncs
+using ParametricInversionTestUtils
 
 @testset "simple invert" begin 
-  f(x, y) = x * x + y
-  z = 5
-  res = invertapply(f, (Int, Int), z, rand(2))
-  @test f(res...) == z
+  f(x, y, z) = x * y + z
+  out = 5
+  res = invertapply(f, (Int, Int, Int), out, rand(2))
+  @test f(res...) == out
 end
