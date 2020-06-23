@@ -28,7 +28,7 @@ function duplify!(ir)
   for (v, n) in nreused_
     if n >= 2
       @show v, n
-      @show duplv = insertafter!(pr, v, xcall(Ailuj, :dupln, v, n))
+      @show duplv = insertafter!(pr, v, xcall(ParametricInversion, :dupln, v, n))
       @show vs = [insertafter!(pr, duplv, xcall(:getindex, duplv, i)) for i = 1:n]
       dupls[v] = vs
     end

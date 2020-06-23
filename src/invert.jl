@@ -60,9 +60,9 @@ function invert!(b::Block, invb::Block)
 
     # Add inverse statement
     piinp = fwd2inv[lhs][MAGIC]    # Input to inverse is output of f app in fwd 
-    invsmt = xcall(Ailuj, :invert, stmt.expr.args[1], piinp, paramarg)
+    types = Any # FIXME: Actually pass types
+    invsmt = xcall(ParametricInversion, :invert, stmt.expr.args[1], Any, piinp, paramarg)
     retvar = push!(invb, invsmt)
-    # Core.print(retvar => invsmt)
     
     if length(args) == 0
       @assert false "unhandled"
@@ -77,7 +77,7 @@ function invert!(b::Block, invb::Block)
       end
     end
     # @show invb
-    # @show args => xcall(Ailuj, :invert, stmt.expr.args[1], lhs)
+    # @show args => xcall(ParametricInversion, :invert, stmt.expr.args[1], lhs)
   end
 
   # Tuple outputs and return
@@ -87,11 +87,7 @@ function invert!(b::Block, invb::Block)
   invb
 end
 
-function invert!(b::Block, ir::IR)
-end
-
 function invert(ir::IR)
-  # @pre length(blocks(ir)) == 1 "cannot invert ir with more than one block"
   invir = IR()    # Invert IR (has one block already)
   invert!(IRTools.block(ir, 1), IRTools.block(invir, 1))
   invir
@@ -100,6 +96,8 @@ end
 cattype(::Type{F}, ::Type{Tuple{T1}}) where {F, T1} = Tuple{F, T1}
 cattype(::Type{F}, ::Type{Tuple{T1, T2}}) where {F, T1, T2} = Tuple{F, T1, T2}
 cattype(::Type{F}, ::Type{Tuple{T1, T2, T3}}) where {F, T1, T2, T3} = Tuple{F, T1, T2, T3}
+cattype(::Type{F}, ::Type{Tuple{T1, T2, T3, T4}}) where {F, T1, T2, T3, T4} = Tuple{F, T1, T2, T3, T4}
+# cattype(::Type{F}, ::Type{NTuple{N, T}}) where {F, N, T} = Tuple{F, T1, T2, T3}
 
 
 dummy() = return
@@ -116,17 +114,56 @@ function makemeta(T; world = IRTools.Inner.worldcounter())
   IRTools.Meta(method, ci, method.nargs, sps)
 end
 
-"Parametric inverse application of `f` to `args`"
-@generated function invert(f, t::Type{T}, arg, φ) where T
-  TS = cattype(f, T)
+function invertapplytransform(f::Type{F}, t::Type{T}) where {F, T}
+  # Lookup forward function IR
+  TS = cattype(F, T)
   m = IRTools.meta(TS)
   fwdir = IRTools.IR(m)
+  nothing
+
+  # Construct inverse IR
   invir = invert(fwdir)
+  Core.print(invir)
+
+  # Finalize
   argnames_ = [Symbol("#self#"), :f, :t, :arg, :φ]
   ci = code_lowered(dummy, Tuple{})[1]
   ci.slotnames = [argnames_...]
   return update!(ci, invir)
-end 
+end
+
+"""
+`invertapply(f, t::Type{T}, arg, φ)`
+
+Parametric inverse application of method `f` to `args` with parameters `φ`
+
+```
+f(x, y, z) = x * y + z
+invertapply(f, Tuple{Int, Int, Int}, 2.3, rand(3))
+```
+
+"""
+@generated function invertapply(f, t::Type{T}, arg, φ) where T
+  invertapplytransform(f, T)
+  # # Lookup forward function IR
+  # TS = cattype(f, T)
+  # m = IRTools.meta(TS)
+  # fwdir = IRTools.IR(m)
+  # nothing
+
+  # # Construct inverse IR
+  # invir = invert(fwdir)
+  # Core.print(invir)
+
+  # # Finalize
+  # argnames_ = [Symbol("#self#"), :f, :t, :arg, :φ]
+  # ci = code_lowered(dummy, Tuple{})[1]
+  # ci.slotnames = [argnames_...]
+  # return update!(ci, invir)
+end
+
+invertapply(f, types::NTuple{N, DataType}, arg, φ) where N =
+  invertapply(f, Base.to_tuple_type(types), arg, φ)
 
 #### Questions
 # For compound object, e.g. inverse of  %9 = %8 + %2

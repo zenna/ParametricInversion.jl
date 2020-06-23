@@ -1,8 +1,8 @@
-# Ailuj.jl
+# ParametricInversion.jl
 
 ```@index
 ```
 
 ```@autodocs
-Modules = [Ailuj]
+Modules = [ParametricInversion]
 ```

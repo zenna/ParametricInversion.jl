@@ -1,6 +1,6 @@
-using Ailuj
+using ParametricInversion
 using Test
 
-@testset "Ailuj.jl" begin
-    # Write your own tests here.
+@testset "ParametricInversion.jl" begin
+  include("invert.jl")
 end
