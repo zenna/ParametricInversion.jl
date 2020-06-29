@@ -1,0 +1,4 @@
+name = "SATModel"
+uuid = "ef208d18-cc83-42b3-afb2-3789ef23691d"
+authors = ["Zenna Tavares <zennatavares@gmail.com>"]
+version = "0.1.0"
