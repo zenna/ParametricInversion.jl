@@ -1,0 +1,5 @@
+name = "ForwardKinematics"
+uuid = "1ba458a4-67af-4f71-8596-2a2222acdb12"
+authors = ["David Morejon <dmorejon98@gmail.com>", "Zenna Tavares <zennatavares@gmail.com>"]
+version = "0.1.0"
+
