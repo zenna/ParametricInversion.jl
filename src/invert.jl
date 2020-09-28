@@ -1,4 +1,7 @@
 export invert
+using Mjolnir
+
+using Mjolnir: trace, Defaults, Const
 
 const VarMap = Dict{Variable, Vector{Variable}}
 
@@ -54,16 +57,20 @@ function invert!(b::Block, invb::Block)
   
   # Mapping between variable names in forward and inverse
   out = IRTools.returnvalue(b)
+  println("out: ", out)
   fwd2inv = VarMap(out => [invinarg])
   MAGIC = 1  # FIXME
   for lhs in reverse(keys(b))
     stmt = b[lhs]
+    println("lhs: ", lhs)
+    println("stmt: ", stmt)
     args = stmt.expr.args[2:end]
 
     # Add inverse statement
     pi_inp = fwd2inv[lhs][MAGIC]    # Input to inverse is output of f app in fwd 
-    types = Any # FIXME: Actually pass types
-    inv_stmt = xcall(ParametricInversion, :invert, stmt.expr.args[1], Any, pi_inp, param_arg)
+    type = stmt.type 
+    inv_stmt = xcall(ParametricInversion, :invert, stmt.expr.args[1], type, pi_inp, param_arg)
+    println("invstmt: ", inv_stmt)
     retvar = push!(invb, inv_stmt)
     
     # display(stmt)
@@ -75,6 +82,7 @@ function invert!(b::Block, invb::Block)
     else
       for (i, arg) in enumerate(args)
         stmt = xcall(Base, :getindex, retvar, i)
+        println("invb stmt", i, " ", stmt)
         retvar2 = push!(invb, stmt)
         set!(fwd2inv, arg, retvar2)
         # @show fwd2inv
@@ -105,6 +113,7 @@ function invert!(b::Block, invb::Block)
   end
 
   rettuple = xcall(Core, :tuple, rettuple...)
+  println("invb rettuple: ", rettuple)
   retval = push!(invb, rettuple)
   IRTools.return!(invb, retval)
   invb
@@ -150,6 +159,8 @@ end
   
 function invert(ir::IR)
   invir = IR()    # Invert IR (has one block already)
+  println("IR block 1: ", IRTools.block(ir, 1))
+  println("invIR 1: ", IRTools.block(invir, 1))
   invert!(IRTools.block(ir, 1), IRTools.block(invir, 1))
   invir
 end
@@ -172,15 +183,20 @@ end
 
 function invertapplytransform(f::Type{F}, t::Type{T}) where {F, T}
   # Lookup forward function IR
+  println("T: ", T)
+  println("F: ", F)
   TS = cattype(F, T)
-  Core.print(TS)
-  m = IRTools.meta(TS)
-  fwdir = IRTools.IR(m)
+  println("TS1: ", TS)
+  Core.println(TS)
+  # m = IRTools.meta(TS)
+  # fwdir = IRTools.IR(m)
+  fwdir = trace(Defaults(), F, t.parameters...)
   nothing
 
   # Construct inverse IR
   invir = invert(fwdir)
-  Core.print(invir)
+  println("invir:")
+  Core.println(invir)
 
   # Finalize
   argnames_ = [Symbol("#self#"), :f, :t, :arg, :φ]
@@ -204,8 +220,9 @@ invertapply(f, Tuple{Int, Int, Int}, 2.3, rand(3))
   return invertapplytransform(f, T)
 end
 
-invertapply(f, types::NTuple{N, DataType}, arg, φ) where N =
+function invertapply(f, types::NTuple{N, DataType}, arg, φ) where N
   invertapply(f, Base.to_tuple_type(types), arg, φ)
+end
 
 #### Questions
 # For compound object, e.g. inverse of  %9 = %8 + %2
