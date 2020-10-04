@@ -20,7 +20,7 @@ function forward_kinematics(angles, lengths)
   for i = 1:size(angles, 1)
     angle_sum += angles[i]
     x += lengths[i] * cos(angle_sum)
-    y += lengths[i] * sin(angleS_sm)
+    y += lengths[i] * sin(angle_sum)
   end
   Point(x, y)
 end
