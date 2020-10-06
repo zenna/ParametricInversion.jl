@@ -1,21 +1,22 @@
 using ForwardKinematics
 using Test
 
-floatEquals(x, y, eps) = abs(x - y) <= eps
-
-# Simple test
-point = forward_kinematics([pi], [1.0])
-@test floatEquals(point.x, -1, 0.00001)
-@test floatEquals(point.y,  0, 0.00001)
-
-# Exception due to unequal sizes
-try
-  forward_kinematics([3.1415], [1.0, 2.0])
-  @test false
-catch err
+@testset "Simple FK" begin 
+  point = forward_kinematics([pi], [1.0])
+  @test point.x ≈ -1 atol=0.00001
+  @test point.y ≈ 0 atol=0.00001
 end
 
-# More complex test
-point = forward_kinematics([0.4, 1.0, 2.0, 0.8, 0.0], [1.0, 2.0, 0.5, 2.0, 1.0])
-@test floatEquals(point.x, -0.693186, 0.000001)
-@test floatEquals(point.y, -0.382180, 0.000001)
+@testset "Exception due to unequal argument sizes" begin 
+  try
+    forward_kinematics([3.1415], [1.0, 2.0])
+    @test false
+  catch err
+  end
+end
+
+@testset "Complex FK" begin
+  point = forward_kinematics([0.4, 1.0, 2.0, 0.8, 0.0], [1.0, 2.0, 0.5, 2.0, 1.0])
+  @test point.x ≈ -0.693186 atol=0.00001
+  @test point.y ≈ -0.382180 atol=0.00001
+end
