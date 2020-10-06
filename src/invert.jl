@@ -57,20 +57,45 @@ function invert!(b::Block, invb::Block)
   
   # Mapping between variable names in forward and inverse
   out = IRTools.returnvalue(b)
-  println("out: ", out)
   fwd2inv = VarMap(out => [invinarg])
+
+  # Mapping between argument variable and its type
+  argtype_map = Dict{IRTools.Variable, Type}()
+  # Start at 2 because 1 is the function
+  for i in 2:size(b.ir.blocks[1].args, 1)
+    arg = b.ir.blocks[1].args[i]
+    argtype = b.ir.blocks[1].argtypes[i]
+    argtype_map[arg] = argtype
+  end
+
   MAGIC = 1  # FIXME
   for lhs in reverse(keys(b))
     stmt = b[lhs]
-    println("lhs: ", lhs)
-    println("stmt: ", stmt)
     args = stmt.expr.args[2:end]
+    arg_types = []
+    constants = []
+    for arg in args
+      if typeof(arg) != IRTools.Variable
+        push!(arg_types, PIConstant{typeof(arg)})
+        push!(constants, PIConstant{typeof(arg)}(arg))
+      elseif arg in keys(argtype_map)
+        push!(arg_types, argtype_map[arg])
+      else
+        push!(arg_types, b[arg].type)
+      end 
+     
+    end
+    arg_types = Tuple{arg_types...}
+    constants = tuple(constants...)
 
     # Add inverse statement
     pi_inp = fwd2inv[lhs][MAGIC]    # Input to inverse is output of f app in fwd 
-    type = stmt.type 
-    inv_stmt = xcall(ParametricInversion, :invert, stmt.expr.args[1], type, pi_inp, param_arg)
-    println("invstmt: ", inv_stmt)
+    output_type = stmt.type
+    if size(constants, 1) > 0 
+      inv_stmt = xcall(ParametricInversion, :invertapply, stmt.expr.args[1], arg_types, constants, pi_inp, param_arg)
+     else 
+      inv_stmt = xcall(ParametricInversion, :invertapply, stmt.expr.args[1], arg_types, pi_inp, param_arg)
+    end
     retvar = push!(invb, inv_stmt)
     
     # display(stmt)
@@ -81,8 +106,11 @@ function invert!(b::Block, invb::Block)
       set!(fwd2inv, args[1], retvar)
     else
       for (i, arg) in enumerate(args)
+        # Skip mapping constants
+        if typeof(arg) != IRTools.Variable
+          continue
+        end
         stmt = xcall(Base, :getindex, retvar, i)
-        println("invb stmt", i, " ", stmt)
         retvar2 = push!(invb, stmt)
         set!(fwd2inv, arg, retvar2)
         # @show fwd2inv
@@ -113,54 +141,13 @@ function invert!(b::Block, invb::Block)
   end
 
   rettuple = xcall(Core, :tuple, rettuple...)
-  println("invb rettuple: ", rettuple)
   retval = push!(invb, rettuple)
   IRTools.return!(invb, retval)
   invb
 end
-
-function invert2!(b::Block, invb::Block)
-  # Inputs
-  selfarg = IRTools.argument!(invb)     # self
-  farg = IRTools.argument!(invb)        # f
-  typearg = IRTools.argument!(invb)     # types
-  invinarg = IRTools.argument!(invb)    # input to inverse
-  param_arg = IRTools.argument!(invb)    # Parameters
-
-  # Mapping between variable names in forward and inverse
-  out = IRTools.returnvalue(b)
-  fwd2inv = VarMap(out => [invinarg])
-  MAGIC = 1  # FIXME
-  for lhs in reverse(keys(b))
-    stmt = b[lhs]
-    fwd_args = stmt.expr.args[2:end] 
-
-    # Add inverse statement
-    pi_inp = fwd2inv[lhs][MAGIC]    # Input to inverse is output of f app in fwd 
-    types = Any # FIXME: Actually pass types
-    fwd_func = stmt.expr.args[1]
-    inv_stmt = xcall(ParametricInversion, :invert, fwd_func, Any, pi_inp, param_arg)
-    retvar = push!(invb, inv_stmt)
-    
-    if length(fwd_args) == 0
-      @assert false "unhandled"
-    elseif length(fwd_args) == 1
-      set!(fwd2inv, fwd_args[1], retvar)
-    else
-      for (i, arg) in enumerate(fwd_args)
-        stmt = xcall(Base, :getindex, retvar, i)
-        retvar2 = push!(invb, stmt)
-        set!(fwd2inv, arg, retvar2)
-        # @show fwd2inv
-      end
-    end
-  end
-end 
   
 function invert(ir::IR)
   invir = IR()    # Invert IR (has one block already)
-  println("IR block 1: ", IRTools.block(ir, 1))
-  println("invIR 1: ", IRTools.block(invir, 1))
   invert!(IRTools.block(ir, 1), IRTools.block(invir, 1))
   invir
 end
@@ -183,19 +170,14 @@ end
 
 function invertapplytransform(f::Type{F}, t::Type{T}) where {F, T}
   # Lookup forward function IR
-  println("T: ", T)
-  println("F: ", F)
   TS = cattype(F, T)
-  println("TS1: ", TS)
-  Core.println(TS)
-  # m = IRTools.meta(TS)
+  m = IRTools.meta(TS)
   # fwdir = IRTools.IR(m)
   fwdir = trace(Defaults(), F, t.parameters...)
   nothing
 
   # Construct inverse IR
   invir = invert(fwdir)
-  println("invir:")
   Core.println(invir)
 
   # Finalize
@@ -239,4 +221,8 @@ end
 
 struct VarTuple{N}
   vars::NTuple{N, Variable}
+end
+
+struct PIConstant{T}
+  value::T
 end
