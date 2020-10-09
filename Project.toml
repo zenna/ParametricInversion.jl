@@ -1,6 +1,6 @@
 name = "ParametricInversion"
 uuid = "6b46f060-7d60-4f37-b11d-8d056bd60d70"
-authors = ["Zenna Tavares"]
+authors = ["Zenna Tavares", "David Morejon"]
 version = "0.1.0"
 
 [deps]
