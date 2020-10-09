@@ -5,7 +5,14 @@ using ParametricInversionTestUtils
 @testset "simple invert" begin 
   f(x, y, z) = x * y + z
   out = 5
-  res = invertapply(f, (Int, Int, Int), out, rand(2))
+  res = invertapply(f, (Float64, Float64, Float64), out, rand(2))
+  @test f(res...) == out
+end
+
+@testset "invert with constants" begin
+  f(x, y) = x * 2 + y * 3
+  out = 100
+  res = invertapply(f, (Float64, Float64), out, rand(2))
   @test f(res...) == out
 end
 
@@ -19,8 +26,8 @@ end
     f = e + d
     return f
   end
-  ParametricInversion.invertapplytransform(typeof(g), Tuple{Int, Int})
-  invertapply(g, (Int, Int), 3, rand(10))
+  ParametricInversion.invertapplytransform(typeof(g), Tuple{Float64, Float64})
+  invertapply(g, (Float64, Float64), 3, rand(10))
 end
 
 
