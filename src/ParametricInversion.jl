@@ -14,8 +14,6 @@ using IRTools.Inner: argnames!, update!, argument!
 
 using Mjolnir
 
-x = 7
-
 export invertapply
 # using ZenUtils
 
