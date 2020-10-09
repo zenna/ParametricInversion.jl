@@ -59,8 +59,11 @@ function invert!(b::Block, invb::Block)
   out = IRTools.returnvalue(b)
   fwd2inv = VarMap(out => [invinarg])
 
-  # Mapping between argument variable and its type
+  # Mapping between argument variables and their types
+  # since this is not accessible with b[var].type for arguments
+  # like for all other variables/statements
   argtype_map = Dict{IRTools.Variable, Type}()
+
   # Start at 2 because 1 is the function
   for i in 2:size(b.ir.blocks[1].args, 1)
     arg = b.ir.blocks[1].args[i]
@@ -74,6 +77,8 @@ function invert!(b::Block, invb::Block)
     args = stmt.expr.args[2:end]
     arg_types = []
     constants = []
+    # Build up tuples of the types for each statement's
+    # input/output so we can route to the right inverse method.
     for arg in args
       if typeof(arg) != IRTools.Variable
         push!(arg_types, PIConstant{typeof(arg)})
@@ -91,6 +96,8 @@ function invert!(b::Block, invb::Block)
     # Add inverse statement
     pi_inp = fwd2inv[lhs][MAGIC]    # Input to inverse is output of f app in fwd 
     output_type = stmt.type
+    # TODO: Do we want to always have a constants array, sometimes empty (givign consistent primitive signatures)
+    #       or like here where the constant array is only present if it is nonempty?
     if size(constants, 1) > 0 
       inv_stmt = xcall(ParametricInversion, :invertapply, stmt.expr.args[1], arg_types, constants, pi_inp, param_arg)
      else 
@@ -170,9 +177,6 @@ end
 
 function invertapplytransform(f::Type{F}, t::Type{T}) where {F, T}
   # Lookup forward function IR
-  TS = cattype(F, T)
-  m = IRTools.meta(TS)
-  # fwdir = IRTools.IR(m)
   fwdir = trace(Defaults(), F, t.parameters...)
   nothing
 
