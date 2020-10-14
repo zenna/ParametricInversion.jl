@@ -1,8 +1,6 @@
 export invert
 using Mjolnir
 
-using Mjolnir: trace, Defaults, Const
-
 const VarMap = Dict{Variable, Vector{Variable}}
 
 function set!(vm::VarMap, k, v)
@@ -65,9 +63,9 @@ function invert!(b::Block, invb::Block)
   argtype_map = Dict{IRTools.Variable, Type}()
 
   # Start at 2 because 1 is the function
-  for i in 2:size(b.ir.blocks[1].args, 1)
-    arg = b.ir.blocks[1].args[i]
-    argtype = b.ir.blocks[1].argtypes[i]
+  for i in 2:size(IRTools.arguments(b), 1)
+    arg = IRTools.arguments(b)[i]
+    argtype = IRTools.argtypes(b)[i]
     argtype_map[arg] = argtype
   end
 
@@ -87,8 +85,7 @@ function invert!(b::Block, invb::Block)
         push!(arg_types, argtype_map[arg])
       else
         push!(arg_types, b[arg].type)
-      end 
-     
+      end
     end
     arg_types = Tuple{arg_types...}
     constants = tuple(constants...)
@@ -177,7 +174,7 @@ end
 
 function invertapplytransform(f::Type{F}, t::Type{T}) where {F, T}
   # Lookup forward function IR
-  fwdir = trace(Defaults(), F, t.parameters...)
+  fwdir = Mjolnir.trace(Mjolnir.Defaults(), F, t.parameters...)
   nothing
 
   # Construct inverse IR
