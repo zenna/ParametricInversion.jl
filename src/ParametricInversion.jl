@@ -12,6 +12,8 @@ using IRTools
 using IRTools: varargs!, inlineable!, pis!, slots!, IR, var, xcall
 using IRTools.Inner: argnames!, update!, argument!
 
+using Mjolnir
+
 export invertapply
 # using ZenUtils
 
