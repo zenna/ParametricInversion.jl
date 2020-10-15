@@ -1,4 +1,5 @@
 export invert
+using Mjolnir
 
 const VarMap = Dict{Variable, Vector{Variable}}
 
@@ -55,15 +56,50 @@ function invert!(b::Block, invb::Block)
   # Mapping between variable names in forward and inverse
   out = IRTools.returnvalue(b)
   fwd2inv = VarMap(out => [invinarg])
+
+  # Mapping between argument variables and their types
+  # since this is not accessible with b[var].type for arguments
+  # like for all other variables/statements
+  argtype_map = Dict{IRTools.Variable, Type}()
+
+  # Start at 2 because 1 is the function
+  for i in 2:size(IRTools.arguments(b), 1)
+    arg = IRTools.arguments(b)[i]
+    argtype = IRTools.argtypes(b)[i]
+    argtype_map[arg] = argtype
+  end
+
   MAGIC = 1  # FIXME
   for lhs in reverse(keys(b))
     stmt = b[lhs]
     args = stmt.expr.args[2:end]
+    arg_types = []
+    constants = []
+    # Build up tuples of the types for each statement's
+    # input/output so we can route to the right inverse method.
+    for arg in args
+      if typeof(arg) != IRTools.Variable
+        push!(arg_types, PIConstant{typeof(arg)})
+        push!(constants, PIConstant{typeof(arg)}(arg))
+      elseif arg in keys(argtype_map)
+        push!(arg_types, argtype_map[arg])
+      else
+        push!(arg_types, b[arg].type)
+      end
+    end
+    arg_types = Tuple{arg_types...}
+    constants = tuple(constants...)
 
     # Add inverse statement
     pi_inp = fwd2inv[lhs][MAGIC]    # Input to inverse is output of f app in fwd 
-    types = Any # FIXME: Actually pass types
-    inv_stmt = xcall(ParametricInversion, :invert, stmt.expr.args[1], Any, pi_inp, param_arg)
+    output_type = stmt.type
+    # TODO: Do we want to always have a constants array, sometimes empty (givign consistent primitive signatures)
+    #       or like here where the constant array is only present if it is nonempty?
+    if size(constants, 1) > 0 
+      inv_stmt = xcall(ParametricInversion, :invertapply, stmt.expr.args[1], arg_types, constants, pi_inp, param_arg)
+     else 
+      inv_stmt = xcall(ParametricInversion, :invertapply, stmt.expr.args[1], arg_types, pi_inp, param_arg)
+    end
     retvar = push!(invb, inv_stmt)
     
     # display(stmt)
@@ -74,6 +110,10 @@ function invert!(b::Block, invb::Block)
       set!(fwd2inv, args[1], retvar)
     else
       for (i, arg) in enumerate(args)
+        # Skip mapping constants
+        if typeof(arg) != IRTools.Variable
+          continue
+        end
         stmt = xcall(Base, :getindex, retvar, i)
         retvar2 = push!(invb, stmt)
         set!(fwd2inv, arg, retvar2)
@@ -109,44 +149,6 @@ function invert!(b::Block, invb::Block)
   IRTools.return!(invb, retval)
   invb
 end
-
-function invert2!(b::Block, invb::Block)
-  # Inputs
-  selfarg = IRTools.argument!(invb)     # self
-  farg = IRTools.argument!(invb)        # f
-  typearg = IRTools.argument!(invb)     # types
-  invinarg = IRTools.argument!(invb)    # input to inverse
-  param_arg = IRTools.argument!(invb)    # Parameters
-
-  # Mapping between variable names in forward and inverse
-  out = IRTools.returnvalue(b)
-  fwd2inv = VarMap(out => [invinarg])
-  MAGIC = 1  # FIXME
-  for lhs in reverse(keys(b))
-    stmt = b[lhs]
-    fwd_args = stmt.expr.args[2:end] 
-
-    # Add inverse statement
-    pi_inp = fwd2inv[lhs][MAGIC]    # Input to inverse is output of f app in fwd 
-    types = Any # FIXME: Actually pass types
-    fwd_func = stmt.expr.args[1]
-    inv_stmt = xcall(ParametricInversion, :invert, fwd_func, Any, pi_inp, param_arg)
-    retvar = push!(invb, inv_stmt)
-    
-    if length(fwd_args) == 0
-      @assert false "unhandled"
-    elseif length(fwd_args) == 1
-      set!(fwd2inv, fwd_args[1], retvar)
-    else
-      for (i, arg) in enumerate(fwd_args)
-        stmt = xcall(Base, :getindex, retvar, i)
-        retvar2 = push!(invb, stmt)
-        set!(fwd2inv, arg, retvar2)
-        # @show fwd2inv
-      end
-    end
-  end
-end 
   
 function invert(ir::IR)
   invir = IR()    # Invert IR (has one block already)
@@ -181,15 +183,12 @@ end
 
 function invertapplytransform(f::Type{F}, t::Type{T}) where {F, T}
   # Lookup forward function IR
-  TS = cattype(F, T)
-  Core.print(TS)
-  m = IRTools.meta(TS)
-  fwdir = IRTools.IR(m)
+  fwdir = Mjolnir.trace(Mjolnir.Defaults(), F, t.parameters...)
   nothing
 
   # Construct inverse IR
   invir = invert(fwdir)
-  Core.print(invir)
+  Core.println(invir)
 
   # Finalize
   argnames_ = [Symbol("#self#"), :f, :t, :arg, :φ]
@@ -213,8 +212,9 @@ invertapply(f, Tuple{Int, Int, Int}, 2.3, rand(3))
   return invertapplytransform(f, T)
 end
 
-invertapply(f, types::NTuple{N, DataType}, arg, φ) where N =
+function invertapply(f, types::NTuple{N, DataType}, arg, φ) where N
   invertapply(f, Base.to_tuple_type(types), arg, φ)
+end
 
 #### Questions
 # For compound object, e.g. inverse of  %9 = %8 + %2
@@ -231,4 +231,8 @@ invertapply(f, types::NTuple{N, DataType}, arg, φ) where N =
 
 struct VarTuple{N}
   vars::NTuple{N, Variable}
+end
+
+struct PIConstant{T}
+  value::T
 end
