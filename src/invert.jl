@@ -11,11 +11,6 @@ function set!(vm::VarMap, k, v)
   end
 end
 
-# struct InvDuplClass
-#   out::Variable
-#   inp::Vector{Variable}
-# end
-
 """
 Invert a basic block, put results in empty block `invb`
 
@@ -105,7 +100,7 @@ function invert!(b::Block, invb::Block)
     # display(stmt)
     # @show fwd2inv
     if length(args) == 0
-      @assert false "unhandled"
+      error("Cannot current invert nullary functions see #10")
     elseif length(args) == 1
       set!(fwd2inv, args[1], retvar)
     else
@@ -120,10 +115,6 @@ function invert!(b::Block, invb::Block)
         # @show fwd2inv
       end
     end
-    # display(invb)
-    # println()
-    # @show invb
-    # @show args => xcall(ParametricInversion, :invert, stmt.expr.args[1], lhs)
   end
 
   # Tuple outputs
@@ -157,11 +148,12 @@ function invert(ir::IR)
 end
 
 
-
+# zt - I wrote these (I think) but I'm not sure what they do?
 dummy() = return
 untvar(t::TypeVar) = t.ub
 untvar(x) = x
 
+# zt - this isn't used anywhere
 function makemeta(T; world = IRTools.Inner.worldcounter())
   F = T.parameters[1]
   _methods = Base._methods_by_ftype(T, -1, world)
@@ -173,22 +165,12 @@ function makemeta(T; world = IRTools.Inner.worldcounter())
 end
 
 function invertir(f::Type{F}, t::Type{T}) where {F, T}
-  # Lookup forward function IR
-  TS = cattype(F, T)
-  m = IRTools.meta(TS)
-  fwdir = IRTools.IR(m)
-  # Construct inverse IR
+  fwdir = Mjolnir.trace(Mjolnir.Defaults(), F, t.parameters...)
   invir = invert(fwdir)
 end
 
 function invertapplytransform(f::Type{F}, t::Type{T}) where {F, T}
-  # Lookup forward function IR
-  fwdir = Mjolnir.trace(Mjolnir.Defaults(), F, t.parameters...)
-  nothing
-
-  # Construct inverse IR
-  invir = invert(fwdir)
-  Core.println(invir)
+  invir = invertir(f, t)
 
   # Finalize
   argnames_ = [Symbol("#self#"), :f, :t, :arg, :φ]
@@ -206,7 +188,6 @@ Parametric inverse application of method `f` to `args` with parameters `φ`
 f(x, y, z) = x * y + z
 invertapply(f, Tuple{Int, Int, Int}, 2.3, rand(3))
 ```
-
 """
 @generated function invertapply(f, t::Type{T}, arg, φ) where T
   return invertapplytransform(f, T)
@@ -215,19 +196,6 @@ end
 function invertapply(f, types::NTuple{N, DataType}, arg, φ) where N
   invertapply(f, Base.to_tuple_type(types), arg, φ)
 end
-
-#### Questions
-# For compound object, e.g. inverse of  %9 = %8 + %2
-# - decompose straightaway or wait until needed? 
-# - Is there a chance of a variable being reused more than once in inverse
-# - TO be reused more than once we need it to be on LHS more than once which is forbidden
-# - 
-# How to handle the parameter addressing
-# 
-
-# Need to  encode
-# 1. Mapping between variables in inverse
-# 
 
 struct VarTuple{N}
   vars::NTuple{N, Variable}

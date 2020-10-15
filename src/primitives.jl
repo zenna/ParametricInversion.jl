@@ -1,9 +1,20 @@
-invertapply(::typeof(+), t::Type{Tuple{Float64, Float64}}, y, φ) = (v = ℝ(φ); (y - v, v))
-invertapply(::typeof(+), t::Type{Tuple{Int64, Int64}}, y, φ) = (v = ℤ(φ); (y - v, v))
+
+# +
+invertapply(::typeof(+), t::Type{Tuple{T, T}}, y, φ) where {T <: AbstractFloat} =
+  (v = ℝ(φ); (y - v, v))
+
+invertapply(::typeof(+), t::Type{Tuple{T, T}}, y, φ) where {T <: Integer} = 
+  (v = ℤ(φ); (y - v, v))
+
+# zt - I'm not sure about this
 invertapply(::typeof(+), t::Type{Tuple{T, T}}, y, φ) where T = (v = ℝ(φ); (y - v, v))
 
-invertapply(::typeof(-), t::Type{Tuple{Int64, Int64}}, y, φ) = (v = ℤ(φ); (y + v, v))
-invertapply(::typeof(-), t::Type{Tuple{Float64, Float64}}, y, φ) = (v = ℝ(φ); (y + v, v))
+invertapply(::typeof(-), t::Type{Tuple{T, T}}, y, φ) where {T <: Integer} =
+  (v = ℤ(φ); (y + v, v))
+invertapply(::typeof(-), t::Type{Tuple{T, T}}, y, φ) where {T <: AbstractFloat} =
+  (v = ℝ(φ); (y + v, v))
+
+# zt - I'm not sure about this
 invertapply(::typeof(-), types::Type{Tuple{T, T}}, y, φ) where T = (v = ℝ(φ); (y + v, v))
 
 function invertapply(::typeof(*), t::Type{Tuple{Float64, Float64}}, y, φ)
