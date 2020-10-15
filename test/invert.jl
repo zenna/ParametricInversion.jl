@@ -2,18 +2,20 @@ using Test
 using ParametricInversion
 using ParametricInversionTestUtils
 
+const ϵ = 0.000001
+
 @testset "simple invert" begin 
   f(x, y, z) = x * y + z
   out = 5
   res = invertapply(f, (Float64, Float64, Float64), out, rand(2))
-  @test f(res...) == out
+  @test f(res...) ≈ out atol=ϵ
 end
 
 @testset "invert with constants" begin
   f(x, y) = x * 2 + y * 3
   out = 100
   res = invertapply(f, (Float64, Float64), out, rand(2))
-  @test f(res...) == out
+  @test f(res...) ≈ out atol=ϵ
 end
 
 @testset "multiple variable use" begin
