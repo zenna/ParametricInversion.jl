@@ -170,6 +170,15 @@ function makemeta(T; world = IRTools.Inner.worldcounter())
   IRTools.Meta(method, ci, method.nargs, sps)
 end
 
+function invertir(f::Type{F}, t::Type{T}) where {F, T}
+  # Lookup forward function IR
+  TS = cattype(F, T)
+  m = IRTools.meta(TS)
+  fwdir = IRTools.IR(m)
+  # Construct inverse IR
+  invir = invert(fwdir)
+end
+
 function invertapplytransform(f::Type{F}, t::Type{T}) where {F, T}
   # Lookup forward function IR
   TS = cattype(F, T)

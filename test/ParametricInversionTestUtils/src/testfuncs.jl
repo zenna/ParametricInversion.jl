@@ -32,11 +32,14 @@ function f4(a)
   x = a + a
 end
 
+function fdupl2(a)
+  x = a + a + a
+end
+
 function f3(a, b, c)
   z = a / c
   x = a + b + z
   y = x * c + b + z
-  g(y) + a
 end
 
 # Multiple Blocks
