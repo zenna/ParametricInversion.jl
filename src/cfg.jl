@@ -26,3 +26,21 @@ function build_cfg(ir::IR)
   end
   return CFG(cfg, return_blocks)
 end
+
+function build_fwdtypes(ir::IR)
+  fwdtypes = Dict{IRTools.Variable, Type}()
+  for b in 1:size(ir.blocks, 1)
+    block = IRTools.block(ir, b)
+    for i in 1:size(IRTools.arguments(block), 1)
+      arg = IRTools.arguments(block)[i]
+      argtype = IRTools.argtypes(block)[i]
+      fwdtypes[arg] = argtype
+    end
+    for var in keys(block)
+      stmt = block[var]
+      fwdtypes[var] = stmt.type
+    end
+  end
+  println(fwdtypes)
+  fwdtypes
+end

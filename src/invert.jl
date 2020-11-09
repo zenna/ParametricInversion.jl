@@ -5,9 +5,13 @@ const VarMap = Dict{Variable, Vector{Variable}}
 
 struct PIContext
   cfg::CFG
+  # Mapping between variable names in forward and inverse
   fwd2inv::VarMap
-  path::Array{Int64}
+  # Mapping between all variable names to type in forward direction
+  fwdtypes::Dict{IRTools.Variable, Type}
+  pathvar::Variable
   φ::Any
+  invinarg::Variable
 end
 
 function set!(vm::VarMap, k, v)
@@ -56,16 +60,17 @@ function invert!(b::Block, invb::Block, ctx::PIContext)
   println("Block invert")
   println(b)
 
-  # Mapping between variable names in forward and inverse
   if IRTools.isreturn(b)
     out = IRTools.returnvalue(b)
-    ctx.fwd2inv[out] = [invinarg]
+    ctx.fwd2inv[out] = [ctx.invinarg]
   end
 
   for branch in ctx.cfg.cfg[b.id].outgoing
     println("block invert prologue")
     println(branch)
     if branch.condition != nothing
+      # TODO: HACK: fix this. this just makes all condition variables false
+      #   Instead, use the last element in the path array in ctx.pathvar
       newvar = push!(invb, false)
       set!(ctx.fwd2inv, branch.condition, newvar)
     end
@@ -95,10 +100,10 @@ function invert!(b::Block, invb::Block, ctx::PIContext)
       if typeof(arg) != IRTools.Variable
         push!(arg_types, PIConstant{typeof(arg)})
         push!(constants, PIConstant{typeof(arg)}(arg))
-      elseif arg in keys(argtype_map)
-        push!(arg_types, argtype_map[arg])
+      elseif arg in keys(ctx.fwdtypes)
+        push!(arg_types, ctx.fwdtypes[arg])
       else
-        push!(arg_types, b[arg].type)
+        error("unknown arg", arg)
       end
     end
     arg_types = Tuple{arg_types...}
@@ -140,6 +145,9 @@ function invert!(b::Block, invb::Block, ctx::PIContext)
     # @show args => xcall(ParametricInversion, :invert, stmt.expr.args[1], lhs)
   end
 
+  # Add this block to the path
+  push!(invb, xcall(Base, :push!, ctx.pathvar, b.id))
+
   # Tuple outputs
   rettuple = []
   
@@ -159,11 +167,12 @@ function invert!(b::Block, invb::Block, ctx::PIContext)
   end
 
 
-  addbranches!(invb, ctx.cfg.cfg[b.id].incoming, ctx.φ)
+  addbranches!(invb, ctx.cfg.cfg[b.id].incoming, ctx)
   
-  # TODO: only return if we are in the first block in the forward direction
+  # TODO think??: only return if we are in the first block in the forward direction?
   println("end of block invert, b.id: ", b.id)
   if b.id == 1
+    println("adding return value")
     rettuple = xcall(Core, :tuple, rettuple...)
     retval = push!(invb, rettuple)
     IRTools.return!(invb, retval)
@@ -175,36 +184,63 @@ end
 # TODO: use phi to actually choose a branch intelligently
 # TODO: add arguments like path through blocks? depends on our value addressing scheme.
 function choosebranch(branches, φ)
-  idx = rand(1:size(branches,1))
-  return branches[idx].block
+  # idx = rand(1:size(branches,1))
+  # println("choosebranch: ", branches)
+  # println("branches[idx]: ", branches[idx], typeof(branches[idx]))
+  
+  # # TODO: might be wrong?? specifically, return branches.
+  # return branches[idx][1]
+  return 1
 end
 
-function addbranches!(invb::Block, branches::Array{Tuple{Branch, Int64}}, φ)
-  chosen = push!(invb, xcall(ParametricInversion, :choosebranch, branches, φ))
+function addbranches!(invb::Block, branches::Array{Tuple{Branch, Int64}}, ctx)
+  chosen = push!(invb, xcall(ParametricInversion, :choosebranch, branches, ctx.φ))
   for b in branches
     println("adding branch", b)
     branch = b[1]
     println("branch cond:", branch.condition)
     blocknum = b[2]
     condition = push!(invb, xcall(Base, !=, chosen, blocknum+1))
-    IRTools.branch!(invb, blocknum+1, branch.args, condition)
+    invargs = []
+    for fwdarg in branch.args
+      if fwdarg in keys(ctx.fwd2inv)
+        push!(invargs, ctx.fwd2inv[fwdarg][1])
+      else
+        # TODO: HACK: we must parametrically choose this argument
+        push!(invargs, 0)
+      end
+    end
+    IRTools.branch!(invb, blocknum+1, invargs, condition)
   end
   println("added branches")
   println(invb)
   println("invb branches:")
   println(IRTools.branches(invb))
 end
+
+# Need n arguments added to invb where n is the 
+# size of the union of all the outgoing branch arguments 
+# in the forward direction (determined by the cfg for block b in fwd direction). 
+# We add these arguments, then update the fwd2inv 
+# map with these arguments. 
+function addArguments!(invb::Block, b, ctx)
+  argset = Set()
+  println("adding arguments to b ", b)
+  for branch in ctx.cfg.cfg[b].outgoing
+    for arg in branch.args
+      if typeof(arg) != Variable || arg in argset
+        continue
+      end
+      invarg = argument!(invb)
+      set!(ctx.fwd2inv, arg, invarg)
+      push!(argset, arg)
+    end
+  end
+end
   
 function invert(ir::IR, φ)
-  cfg = build_cfg(ir)
-  ctx = PIContext(cfg, VarMap(), [], φ)
-
   invir = IR()    # Invert IR (has one block already)
   invb = IRTools.block(invir, 1)
-
-  # Add possible starting points to block 1 of inverse direction
-  # Convention: (block # in inverse direction) = (block # in forward direction) + 1
-  addbranches!(invb, cfg.return_blocks, φ)
 
   # Inputs
   selfarg = IRTools.argument!(invb)     # self
@@ -213,8 +249,20 @@ function invert(ir::IR, φ)
   invinarg = IRTools.argument!(invb)    # input to inverse
   param_arg = IRTools.argument!(invb)    # Parameters
 
+  pathvar = push!(invb, xcall(Base, :vect))
+
+  cfg = build_cfg(ir)
+  fwdtypes = build_fwdtypes(ir)
+  ctx = PIContext(cfg, VarMap(), fwdtypes, pathvar, φ, invinarg)
+
+
+  # Add possible starting points to block 1 of inverse direction
+  # Convention: (block # in inverse direction) = (block # in forward direction) + 1
+  addbranches!(invb, cfg.return_blocks, ctx)
+
   for b in 1:size(ir.blocks, 1)
     invb_new = IRTools.block!(invir)
+    addArguments!(invb_new, b, ctx)
     invert!(IRTools.block(ir, b), invb_new, ctx)
   end
   
@@ -222,7 +270,7 @@ function invert(ir::IR, φ)
 end
 
 
-# dummy() = return
+dummy() = return
 # untvar(t::TypeVar) = t.ub
 # untvar(x) = x
 
@@ -247,10 +295,10 @@ function invertapplytransform(f::Type{F}, t::Type{T}, φ) where {F, T}
   Core.println(invir)
 
   # Finalize
-  # argnames_ = [Symbol("#self#"), :f, :t, :arg, :φ]
-  # ci = code_lowered(dummy, Tuple{})[1]
-  # ci.slotnames = [argnames_...]
-  # return update!(ci, invir)
+  argnames_ = [Symbol("#self#"), :f, :t, :arg, :φ]
+  ci = code_lowered(dummy, Tuple{})[1]
+  ci.slotnames = [argnames_...]
+  return update!(ci, invir)
 end
 
 """
