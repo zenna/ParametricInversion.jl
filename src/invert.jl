@@ -57,17 +57,12 @@ The inverted IR is
 ```
 """
 function invert!(b::Block, invb::Block, ctx::PIContext)
-  println("Block invert")
-  println(b)
-
   if IRTools.isreturn(b)
     out = IRTools.returnvalue(b)
     ctx.fwd2inv[out] = [ctx.invinarg]
   end
 
   for branch in ctx.cfg.cfg[b.id].outgoing
-    println("block invert prologue")
-    println(branch)
     if branch.condition != nothing
       # TODO: HACK: fix this. this just makes all condition variables false
       #   Instead, use the last element in the path array in ctx.pathvar
@@ -89,8 +84,6 @@ function invert!(b::Block, invb::Block, ctx::PIContext)
   MAGIC = 1  # FIXME
   for lhs in reverse(keys(b))
     stmt = b[lhs]
-    println("stmt: ", stmt)
-    println("args: ", stmt.expr.args)
     args = stmt.expr.args[2:end]
     arg_types = []
     constants = []
@@ -170,9 +163,7 @@ function invert!(b::Block, invb::Block, ctx::PIContext)
   addbranches!(invb, ctx.cfg.cfg[b.id].incoming, ctx)
   
   # TODO think??: only return if we are in the first block in the forward direction?
-  println("end of block invert, b.id: ", b.id)
   if b.id == 1
-    println("adding return value")
     rettuple = xcall(Core, :tuple, rettuple...)
     retval = push!(invb, rettuple)
     IRTools.return!(invb, retval)
@@ -196,11 +187,9 @@ end
 function addbranches!(invb::Block, branches::Array{Tuple{Branch, Int64}}, ctx)
   chosen = push!(invb, xcall(ParametricInversion, :choosebranch, branches, ctx.φ))
   for b in branches
-    println("adding branch", b)
     branch = b[1]
-    println("branch cond:", branch.condition)
     blocknum = b[2]
-    condition = push!(invb, xcall(Base, !=, chosen, blocknum+1))
+    condition = push!(invb, xcall(Base, :(!=), chosen, blocknum+1))
     invargs = []
     for fwdarg in branch.args
       if fwdarg in keys(ctx.fwd2inv)
@@ -212,10 +201,6 @@ function addbranches!(invb::Block, branches::Array{Tuple{Branch, Int64}}, ctx)
     end
     IRTools.branch!(invb, blocknum+1, invargs, condition)
   end
-  println("added branches")
-  println(invb)
-  println("invb branches:")
-  println(IRTools.branches(invb))
 end
 
 # Need n arguments added to invb where n is the 
@@ -225,7 +210,6 @@ end
 # map with these arguments. 
 function addArguments!(invb::Block, b, ctx)
   argset = Set()
-  println("adding arguments to b ", b)
   for branch in ctx.cfg.cfg[b].outgoing
     for arg in branch.args
       if typeof(arg) != Variable || arg in argset
@@ -242,7 +226,7 @@ function invert(ir::IR, φ)
   invir = IR()    # Invert IR (has one block already)
   invb = IRTools.block(invir, 1)
 
-  # Inputs
+  # Inputs  
   selfarg = IRTools.argument!(invb)     # self
   farg = IRTools.argument!(invb)        # f
   typearg = IRTools.argument!(invb)     # types
@@ -290,7 +274,6 @@ function invertapplytransform(f::Type{F}, t::Type{T}, φ) where {F, T}
   nothing
 
   # Construct inverse IR
-  println("about to invert fwdir")
   invir = invert(fwdir, φ)
   Core.println(invir)
 
