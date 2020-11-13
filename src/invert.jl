@@ -46,7 +46,7 @@ function invert!(b::Block, invb::Block)
   farg = IRTools.argument!(invb)        # f
   typearg = IRTools.argument!(invb)     # types
   invinarg = IRTools.argument!(invb)    # input to inverse
-  param_arg = IRTools.argument!(invb)    # Parameters
+  param_arg = IRTools.argument!(invb)   # Parameters
   
   # Mapping between variable names in forward and inverse
   out = IRTools.returnvalue(b)
@@ -147,23 +147,6 @@ function invert(ir::IR)
   invir
 end
 
-
-# zt - I wrote these (I think) but I'm not sure what they do?
-dummy() = return
-untvar(t::TypeVar) = t.ub
-untvar(x) = x
-
-# zt - this isn't used anywhere
-function makemeta(T; world = IRTools.Inner.worldcounter())
-  F = T.parameters[1]
-  _methods = Base._methods_by_ftype(T, -1, world)
-  type_signature, sps, method = last(_methods)
-  type_signature, sps, method = last(_methods)
-  sps = Core.svec(map(untvar, sps)...)
-  ci = code_lowered(dummy, Tuple{})[1]
-  IRTools.Meta(method, ci, method.nargs, sps)
-end
-
 function invertir(f::Type{F}, t::Type{T}) where {F, T}
   fwdir = Mjolnir.trace(Mjolnir.Defaults(), F, t.parameters...)
   invir = invert(fwdir)
@@ -173,6 +156,8 @@ function invertapplytransform(f::Type{F}, t::Type{T}) where {F, T}
   invir = invertir(f, t)
 
   # Finalize
+  # zt - I wrote this (I think) but I'm not sure what they do?
+  dummy() = return
   argnames_ = [Symbol("#self#"), :f, :t, :arg, :φ]
   ci = code_lowered(dummy, Tuple{})[1]
   ci.slotnames = [argnames_...]
