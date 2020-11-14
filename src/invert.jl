@@ -3,6 +3,17 @@ using Mjolnir
 
 const VarMap = Dict{Variable, Vector{Variable}}
 
+struct PIContext
+  cfg::CFG
+  # Mapping between variable names in forward and inverse
+  fwd2inv::VarMap
+  # Mapping between all variable names to type in forward direction
+  fwdtypes::Dict{IRTools.Variable, Type}
+  pathvar::Variable
+  φ::Any
+  invinarg::Variable
+end
+
 function set!(vm::VarMap, k, v)
   if k in keys(vm)
     push!(vm[k], v)
@@ -45,25 +56,26 @@ The inverted IR is
   return %8
 ```
 """
-function invert!(b::Block, invb::Block)
-  # Inputs
-  selfarg = IRTools.argument!(invb)     # self
-  farg = IRTools.argument!(invb)        # f
-  typearg = IRTools.argument!(invb)     # types
-  invinarg = IRTools.argument!(invb)    # input to inverse
-  param_arg = IRTools.argument!(invb)    # Parameters
-  
-  # Mapping between variable names in forward and inverse
-  out = IRTools.returnvalue(b)
-  fwd2inv = VarMap(out => [invinarg])
+function invert!(b::Block, invb::Block, ctx::PIContext)
+  if IRTools.isreturn(b)
+    out = IRTools.returnvalue(b)
+    ctx.fwd2inv[out] = [ctx.invinarg]
+  end
 
+  for branch in ctx.cfg.cfg[b.id].outgoing
+    if branch.condition != nothing
+      # TODO: HACK: fix this. this just makes all condition variables false
+      #   Instead, use the last element in the path array in ctx.pathvar
+      newvar = push!(invb, false)
+      set!(ctx.fwd2inv, branch.condition, newvar)
+    end
+  end
   # Mapping between argument variables and their types
   # since this is not accessible with b[var].type for arguments
   # like for all other variables/statements
   argtype_map = Dict{IRTools.Variable, Type}()
 
-  # Start at 2 because 1 is the function
-  for i in 2:size(IRTools.arguments(b), 1)
+  for i in 1:size(IRTools.arguments(b), 1)
     arg = IRTools.arguments(b)[i]
     argtype = IRTools.argtypes(b)[i]
     argtype_map[arg] = argtype
@@ -81,24 +93,24 @@ function invert!(b::Block, invb::Block)
       if typeof(arg) != IRTools.Variable
         push!(arg_types, PIConstant{typeof(arg)})
         push!(constants, PIConstant{typeof(arg)}(arg))
-      elseif arg in keys(argtype_map)
-        push!(arg_types, argtype_map[arg])
+      elseif arg in keys(ctx.fwdtypes)
+        push!(arg_types, ctx.fwdtypes[arg])
       else
-        push!(arg_types, b[arg].type)
+        error("unknown arg", arg)
       end
     end
     arg_types = Tuple{arg_types...}
     constants = tuple(constants...)
 
     # Add inverse statement
-    pi_inp = fwd2inv[lhs][MAGIC]    # Input to inverse is output of f app in fwd 
+    pi_inp = ctx.fwd2inv[lhs][MAGIC]    # Input to inverse is output of f app in fwd 
     output_type = stmt.type
-    # TODO: Do we want to always have a constants array, sometimes empty (givign consistent primitive signatures)
+    # TODO: Do we want to always have a constants array, sometimes empty (giving consistent primitive signatures)
     #       or like here where the constant array is only present if it is nonempty?
     if size(constants, 1) > 0 
-      inv_stmt = xcall(ParametricInversion, :invertapply, stmt.expr.args[1], arg_types, constants, pi_inp, param_arg)
+      inv_stmt = xcall(ParametricInversion, :invertapply, stmt.expr.args[1], arg_types, constants, pi_inp, ctx.φ)
      else 
-      inv_stmt = xcall(ParametricInversion, :invertapply, stmt.expr.args[1], arg_types, pi_inp, param_arg)
+      inv_stmt = xcall(ParametricInversion, :invertapply, stmt.expr.args[1], arg_types, pi_inp, ctx.φ)
     end
     retvar = push!(invb, inv_stmt)
     
@@ -107,7 +119,7 @@ function invert!(b::Block, invb::Block)
     if length(args) == 0
       @assert false "unhandled"
     elseif length(args) == 1
-      set!(fwd2inv, args[1], retvar)
+      set!(ctx.fwd2inv, args[1], retvar)
     else
       for (i, arg) in enumerate(args)
         # Skip mapping constants
@@ -116,7 +128,7 @@ function invert!(b::Block, invb::Block)
         end
         stmt = xcall(Base, :getindex, retvar, i)
         retvar2 = push!(invb, stmt)
-        set!(fwd2inv, arg, retvar2)
+        set!(ctx.fwd2inv, arg, retvar2)
         # @show fwd2inv
       end
     end
@@ -126,6 +138,9 @@ function invert!(b::Block, invb::Block)
     # @show args => xcall(ParametricInversion, :invert, stmt.expr.args[1], lhs)
   end
 
+  # Add this block to the path
+  push!(invb, xcall(Base, :push!, ctx.pathvar, b.id))
+
   # Tuple outputs
   rettuple = []
   
@@ -134,7 +149,7 @@ function invert!(b::Block, invb::Block)
   # We must then invdupl them to produce output of the parametric inverse for that
   # one input to the forward function
   for var in arguments(b)[2:end]
-    duplicates = fwd2inv[var]
+    duplicates = ctx.fwd2inv[var]
     if length(duplicates) == 1
       push!(rettuple, duplicates[1])
     else
@@ -144,41 +159,122 @@ function invert!(b::Block, invb::Block)
     end
   end
 
-  rettuple = xcall(Core, :tuple, rettuple...)
-  retval = push!(invb, rettuple)
-  IRTools.return!(invb, retval)
+
+  addbranches!(invb, ctx.cfg.cfg[b.id].incoming, ctx)
+  
+  # TODO think??: only return if we are in the first block in the forward direction?
+  if b.id == 1
+    rettuple = xcall(Core, :tuple, rettuple...)
+    retval = push!(invb, rettuple)
+    IRTools.return!(invb, retval)
+  end
+
   invb
 end
+
+# TODO: use phi to actually choose a branch intelligently
+# TODO: add arguments like path through blocks? depends on our value addressing scheme.
+function choosebranch(branches, φ)
+  # idx = rand(1:size(branches,1))
+  # println("choosebranch: ", branches)
+  # println("branches[idx]: ", branches[idx], typeof(branches[idx]))
   
-function invert(ir::IR)
+  # # TODO: might be wrong?? specifically, return branches.
+  # return branches[idx][1]
+  return 1
+end
+
+function addbranches!(invb::Block, branches::Array{Tuple{Branch, Int64}}, ctx)
+  chosen = push!(invb, xcall(ParametricInversion, :choosebranch, branches, ctx.φ))
+  for b in branches
+    branch = b[1]
+    blocknum = b[2]
+    condition = push!(invb, xcall(Base, :(!=), chosen, blocknum+1))
+    invargs = []
+    for fwdarg in branch.args
+      if fwdarg in keys(ctx.fwd2inv)
+        push!(invargs, ctx.fwd2inv[fwdarg][1])
+      else
+        # TODO: HACK: we must parametrically choose this argument
+        push!(invargs, 0)
+      end
+    end
+    IRTools.branch!(invb, blocknum+1, invargs, condition)
+  end
+end
+
+# Need n arguments added to invb where n is the 
+# size of the union of all the outgoing branch arguments 
+# in the forward direction (determined by the cfg for block b in fwd direction). 
+# We add these arguments, then update the fwd2inv 
+# map with these arguments. 
+function addArguments!(invb::Block, b, ctx)
+  argset = Set()
+  for branch in ctx.cfg.cfg[b].outgoing
+    for arg in branch.args
+      if typeof(arg) != Variable || arg in argset
+        continue
+      end
+      invarg = argument!(invb)
+      set!(ctx.fwd2inv, arg, invarg)
+      push!(argset, arg)
+    end
+  end
+end
+  
+function invert(ir::IR, φ)
   invir = IR()    # Invert IR (has one block already)
-  invert!(IRTools.block(ir, 1), IRTools.block(invir, 1))
+  invb = IRTools.block(invir, 1)
+
+  # Inputs  
+  selfarg = IRTools.argument!(invb)     # self
+  farg = IRTools.argument!(invb)        # f
+  typearg = IRTools.argument!(invb)     # types
+  invinarg = IRTools.argument!(invb)    # input to inverse
+  param_arg = IRTools.argument!(invb)    # Parameters
+
+  pathvar = push!(invb, xcall(Base, :vect))
+
+  cfg = build_cfg(ir)
+  fwdtypes = build_fwdtypes(ir)
+  ctx = PIContext(cfg, VarMap(), fwdtypes, pathvar, φ, invinarg)
+
+
+  # Add possible starting points to block 1 of inverse direction
+  # Convention: (block # in inverse direction) = (block # in forward direction) + 1
+  addbranches!(invb, cfg.return_blocks, ctx)
+
+  for b in 1:size(ir.blocks, 1)
+    invb_new = IRTools.block!(invir)
+    addArguments!(invb_new, b, ctx)
+    invert!(IRTools.block(ir, b), invb_new, ctx)
+  end
+  
   invir
 end
 
 
-
 dummy() = return
-untvar(t::TypeVar) = t.ub
-untvar(x) = x
+# untvar(t::TypeVar) = t.ub
+# untvar(x) = x
 
-function makemeta(T; world = IRTools.Inner.worldcounter())
-  F = T.parameters[1]
-  _methods = Base._methods_by_ftype(T, -1, world)
-  type_signature, sps, method = last(_methods)
-  type_signature, sps, method = last(_methods)
-  sps = Core.svec(map(untvar, sps)...)
-  ci = code_lowered(dummy, Tuple{})[1]
-  IRTools.Meta(method, ci, method.nargs, sps)
-end
+# function makemeta(T; world = IRTools.Inner.worldcounter())
+#   F = T.parameters[1]
+#   _methods = Base._methods_by_ftype(T, -1, world)
+#   type_signature, sps, method = last(_methods)
+#   type_signature, sps, method = last(_methods)
+#   sps = Core.svec(map(untvar, sps)...)
+#   ci = code_lowered(dummy, Tuple{})[1]
+#   IRTools.Meta(method, ci, method.nargs, sps)
+# end
 
-function invertapplytransform(f::Type{F}, t::Type{T}) where {F, T}
+function invertapplytransform(f::Type{F}, t::Type{T}, φ) where {F, T}
   # Lookup forward function IR
   fwdir = Mjolnir.trace(Mjolnir.Defaults(), F, t.parameters...)
   nothing
 
   # Construct inverse IR
-  invir = invert(fwdir)
+  invir = invert(fwdir, φ)
   Core.println(invir)
 
   # Finalize
@@ -200,7 +296,7 @@ invertapply(f, Tuple{Int, Int, Int}, 2.3, rand(3))
 
 """
 @generated function invertapply(f, t::Type{T}, arg, φ) where T
-  return invertapplytransform(f, T)
+  return invertapplytransform(f, T, φ)
 end
 
 function invertapply(f, types::NTuple{N, DataType}, arg, φ) where N
