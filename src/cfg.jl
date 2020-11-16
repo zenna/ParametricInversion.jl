@@ -1,3 +1,10 @@
+# const Za = NamedTuple{(:a, :b), Tuple{Branch, Int}}
+
+# struct Za
+#   branch::Branch
+#   blockid::Int64
+# end
+
 struct CFGBlock
   incoming::Array{Tuple{Branch, Int64}}
   outgoing::Array{Branch}
@@ -41,6 +48,6 @@ function build_fwdtypes(ir::IR)
       fwdtypes[var] = stmt.type
     end
   end
-  println(fwdtypes)
+  # println(fwdtypes)
   fwdtypes
 end

@@ -1,17 +1,16 @@
 export invert
 using Mjolnir
+using IRTools.Inner: Variable, argtypes, arguments
 
 const VarMap = Dict{Variable, Vector{Variable}}
 
 struct PIContext
   cfg::CFG
-  # Mapping between variable names in forward and inverse
-  fwd2inv::VarMap
-  # Mapping between all variable names to type in forward direction
-  fwdtypes::Dict{IRTools.Variable, Type}
-  pathvar::Variable
-  φ::Any
-  invinarg::Variable
+  fwd2inv::VarMap                   # Mapping between variable names in forward and inverse
+  fwdtypes::Dict{Variable, Type}    # Mapping between all variable names to type in forward direction
+  pathvar::Variable                 # Variable of path (todo: store in context?)
+  param_arg::Variable               # Variable of params (todo: make this dynamicctx)
+  invinarg::Variable                # argument for input to the inverse
 end
 
 function set!(vm::VarMap, k, v)
@@ -56,7 +55,7 @@ The inverted IR is
   return %8
 ```
 """
-function invert!(b::Block, invb::Block, ctx::PIContext)
+function invert!(b::Block, invb::Block, ctx::PIContext) 
   if IRTools.isreturn(b)
     out = IRTools.returnvalue(b)
     ctx.fwd2inv[out] = [ctx.invinarg]
@@ -74,19 +73,23 @@ function invert!(b::Block, invb::Block, ctx::PIContext)
   # since this is not accessible with b[var].type for arguments
   # like for all other variables/statements
   argtype_map = Dict{IRTools.Variable, Type}()
+  argtype_map = Dict{Variable, Type}(zip(arguments(b), argtypes(b)))
 
-  for i in 1:size(IRTools.arguments(b), 1)
-    arg = IRTools.arguments(b)[i]
-    argtype = IRTools.argtypes(b)[i]
-    argtype_map[arg] = argtype
-  end
+  # for i in 1:length(IRTools.arguments(b))
+  #   arg = IRTools.arguments(b)[i]
+  #   argtype = IRTools.argtypes(b)[i]
+  #   argtype_map[arg] = argtype
+  # end
 
+  # In reverse order: for each statement in b of form `a = f(x, y)`
+  # `
   MAGIC = 1  # FIXME
   for lhs in reverse(keys(b))
     stmt = b[lhs]
     args = stmt.expr.args[2:end]
-    arg_types = []
-    constants = []
+    arg_types = []  # todo: what are these
+    constants = []  # todo: what is this
+
     # Build up tuples of the types for each statement's
     # input/output so we can route to the right inverse method.
     for arg in args
@@ -103,22 +106,26 @@ function invert!(b::Block, invb::Block, ctx::PIContext)
     constants = tuple(constants...)
 
     # Add inverse statement
+    # Todo: there may be multiple values, implication of choosing MAGIC?
     pi_inp = ctx.fwd2inv[lhs][MAGIC]    # Input to inverse is output of f app in fwd 
     output_type = stmt.type
     # TODO: Do we want to always have a constants array, sometimes empty (giving consistent primitive signatures)
     #       or like here where the constant array is only present if it is nonempty?
     if size(constants, 1) > 0 
-      inv_stmt = xcall(ParametricInversion, :invertapply, stmt.expr.args[1], arg_types, constants, pi_inp, ctx.φ)
-     else 
-      inv_stmt = xcall(ParametricInversion, :invertapply, stmt.expr.args[1], arg_types, pi_inp, ctx.φ)
+      inv_stmt = xcall(ParametricInversion, :invertapply, stmt.expr.args[1], arg_types, constants, pi_inp, ctx.param_arg)
+    else
+      inv_stmt = xcall(ParametricInversion, :invertapply, stmt.expr.args[1], arg_types, pi_inp, ctx.param_arg)
     end
     retvar = push!(invb, inv_stmt)
     
-    # display(stmt)
-    # @show fwd2inv
+
+    # For each statement in invb of form `a = invapply(+, x) ``
+    # produce statements: x = a[1], y = a[2]
     if length(args) == 0
-      @assert false "unhandled"
+      error("Cannot invert functions of no arguments")
     elseif length(args) == 1
+      # TODO: should unary and nary be handlded differently? do unary inverses return value
+      # or tuple?
       set!(ctx.fwd2inv, args[1], retvar)
     else
       for (i, arg) in enumerate(args)
@@ -138,6 +145,7 @@ function invert!(b::Block, invb::Block, ctx::PIContext)
     # @show args => xcall(ParametricInversion, :invert, stmt.expr.args[1], lhs)
   end
 
+  # Todo: This should probably be at the top no?
   # Add this block to the path
   push!(invb, xcall(Base, :push!, ctx.pathvar, b.id))
 
@@ -158,7 +166,6 @@ function invert!(b::Block, invb::Block, ctx::PIContext)
       push!(rettuple, invdupl_retvar)
     end
   end
-
 
   addbranches!(invb, ctx.cfg.cfg[b.id].incoming, ctx)
   
@@ -185,11 +192,11 @@ function choosebranch(branches, φ)
 end
 
 function addbranches!(invb::Block, branches::Array{Tuple{Branch, Int64}}, ctx)
-  chosen = push!(invb, xcall(ParametricInversion, :choosebranch, branches, ctx.φ))
+  chosen = push!(invb, xcall(ParametricInversion, :choosebranch, branches, ctx.param_arg))
   for b in branches
-    branch = b[1]
+    branch = b[1]  ## zt: todo Use a named tuple
     blocknum = b[2]
-    condition = push!(invb, xcall(Base, :(!=), chosen, blocknum+1))
+    condition = push!(invb, xcall(Base, :(!=), chosen, blocknum + 1)) # blockid = invblockid + 1
     invargs = []
     for fwdarg in branch.args
       if fwdarg in keys(ctx.fwd2inv)
@@ -208,7 +215,7 @@ end
 # in the forward direction (determined by the cfg for block b in fwd direction). 
 # We add these arguments, then update the fwd2inv 
 # map with these arguments. 
-function addArguments!(invb::Block, b, ctx)
+function addblockargs!(invb::Block, b, ctx)
   argset = Set()
   for branch in ctx.cfg.cfg[b].outgoing
     for arg in branch.args
@@ -222,7 +229,7 @@ function addArguments!(invb::Block, b, ctx)
   end
 end
   
-function invert(ir::IR, φ)
+function invert(ir::IR)
   invir = IR()    # Invert IR (has one block already)
   invb = IRTools.block(invir, 1)
 
@@ -237,7 +244,7 @@ function invert(ir::IR, φ)
 
   cfg = build_cfg(ir)
   fwdtypes = build_fwdtypes(ir)
-  ctx = PIContext(cfg, VarMap(), fwdtypes, pathvar, φ, invinarg)
+  ctx = PIContext(cfg, VarMap(), fwdtypes, pathvar, param_arg, invinarg)
 
 
   # Add possible starting points to block 1 of inverse direction
@@ -246,7 +253,7 @@ function invert(ir::IR, φ)
 
   for b in 1:size(ir.blocks, 1)
     invb_new = IRTools.block!(invir)
-    addArguments!(invb_new, b, ctx)
+    addblockargs!(invb_new, b, ctx)
     invert!(IRTools.block(ir, b), invb_new, ctx)
   end
   
@@ -274,7 +281,7 @@ function invertapplytransform(f::Type{F}, t::Type{T}, φ) where {F, T}
   nothing
 
   # Construct inverse IR
-  invir = invert(fwdir, φ)
+  invir = invert(fwdir)
   Core.println(invir)
 
   # Finalize

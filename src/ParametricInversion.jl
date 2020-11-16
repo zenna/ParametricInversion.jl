@@ -25,5 +25,6 @@ include("duplify.jl")
 include("invert.jl")
 include("param.jl")
 include("primitives.jl")
+include("passes.jl")
 
 end
