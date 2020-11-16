@@ -61,14 +61,11 @@ Removes implicit use of variable.
 Updates `ir` such that if a block uses some variable `v` then `v` is an input to that block.
 """
 function passvars!(ir)
-  @show blockidss_ = Set{Int}([b.id for b in IRTools.blocks(ir)]) ## zt: do we want to be putting ir into 
-  Subs = []
+  blockidss_ = Set{Int}([b.id for b in IRTools.blocks(ir)]) ## zt: do we want to be putting ir into 
   m = Dict{Variable, Set{Variable}}()  # Mapping from vars to equivalence class
-  j = 1
   while !isempty(blockidss_)
     bid = pop!(blockidss_)
     b = IRTools.block(ir, bid)
-    println("Popping block ", b)
     undefvars = locallyundefinedvars(b)
 
     # Nothing to do if no undefined vars, skip
@@ -81,40 +78,30 @@ function passvars!(ir)
         if isnothing(res)
           arg = argument!(b)      # add the enecessary inputs
           push!(newargs, v)
-          println("Adding arg ", arg, " To block ", b.id, " for var ", v)
           # zt -- doing multiple passes, could do more efficiently with one
           varreplace!(b, v, arg)  # 
           push!(get!(m, arg, Set{Variable}()), v)
-          #push!(m[v], arg)        # add arg to equivalence class
         else
-          println("Found you already")
-          # @assert false
           varreplace!(b, v, arguments(b)[res])
         end
       end
-      display(m)
 
       isempty(newargs) && continue
-      # If we have added new arguments we need to
+      # If we have added new arguments we need to update all the branch points that lead here
       for pa in predecessors(b)          
         # For each block which branches to `b`, need to update the branch poins
         for br in branches(pa)
           if br.block == b.id
             offset = length(br.args) - length(newargs)
-            # @show newargs
-            # @show br.args
             for i = 1:length(newargs)
               br.args[i + offset] = newargs[i]
             end
             @assert !any(isnothing, br.args)
           end
         end
-        println("Add block ", pa.id)
         push!(blockidss_, pa.id)    # Add to queue (since we've updated it and it may now have undefvars vars)
       end
     end
-    display(ir)
-    println("\n")
   end
   ir
 end
