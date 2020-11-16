@@ -40,11 +40,8 @@ branchpreds(block) =
 "Variables that are produced by `b`: inputs or lhs of statements"
 producedvars(b) = arguments(b) ∪ keys(b)
 
-"Variables that are used in `b`"
-usedvars(b) = stmts(b) ∪ branchvars(b) ∪ returnvars(b)
-
 "Variables that are used in block `b` but neither defined in `b` nor inputs to `b`"
-locallyundefinedvars(b) = setdiff(usedvars, producedvars)
+locallyundefinedvars(b) = setdiff(usedvars(b), producedvars(b))
 
 "Repalce all occurances of `x` with `y` variable `v1` with variable `v2` in block `b`"
 function varreplace!(b, v1, v2)
@@ -52,7 +49,7 @@ function varreplace!(b, v1, v2)
     if x isa Variable && x == v1
       v2
     else
-      v1
+      x
     end
   end
 end
@@ -64,50 +61,56 @@ Removes implicit use of variable.
 Updates `ir` such that if a block uses some variable `v` then `v` is an input to that block.
 """
 function passvars!(ir)
-  blocks_ = Set{Block}(blocks(ir)) ## zt: do we want to be putting ir into 
+  @show blockidss_ = Set{Int}([b.id for b in IRTools.blocks(ir)]) ## zt: do we want to be putting ir into 
   Subs = []
-  m = Dict{Var, Set{Variable}}()  # Mapping from vars to equivalence class
+  m = Dict{Variable, Set{Variable}}()  # Mapping from vars to equivalence class
   j = 1
-  while !isempty(blocks_)
-    j += 1
-    if j > 20
-      @assert false
-    end
-
-    println("Blocks ", [b.id for b in blocks_])
-    b = pop!(blocks_)
+  while !isempty(blockidss_)
+    bid = pop!(blockidss_)
+    b = IRTools.block(ir, bid)
+    println("Popping block ", b)
     undefvars = locallyundefinedvars(b)
 
     # Nothing to do if no undefined vars, skip
     if !isempty(undefvars)
+      newargs = Variable[]
       for v in undefvars
         # Is `v` truly undefined (locally), or is it equal to one of the inputs
-        res = findfirst(arg -> arg in m && v in m[arg], arguments(b))
+        res = findfirst(arg -> arg in keys(m) && v in m[arg], arguments(b))
         # If so : add a new argument 
         if isnothing(res)
           arg = argument!(b)      # add the enecessary inputs
+          push!(newargs, v)
+          println("Adding arg ", arg, " To block ", b.id, " for var ", v)
           # zt -- doing multiple passes, could do more efficiently with one
           varreplace!(b, v, arg)  # 
-          push!(m[v], arg)        # add arg to equivalence class
+          push!(get!(m, arg, Set{Variable}()), v)
+          #push!(m[v], arg)        # add arg to equivalence class
         else
+          println("Found you already")
+          # @assert false
           varreplace!(b, v, arguments(b)[res])
         end
       end
+      display(m)
+
+      isempty(newargs) && continue
+      # If we have added new arguments we need to
       for pa in predecessors(b)          
         # For each block which branches to `b`, need to update the branch poins
         for br in branches(pa)
           if br.block == b.id
-            offset = length(br.args) - length(undefvars)
-            @show undefvars
-            @show br.args
-            for i = 1:length(undefvars)
-              br.args[i + offset] = undefvars[i]
+            offset = length(br.args) - length(newargs)
+            # @show newargs
+            # @show br.args
+            for i = 1:length(newargs)
+              br.args[i + offset] = newargs[i]
             end
             @assert !any(isnothing, br.args)
           end
         end
         println("Add block ", pa.id)
-        push!(blocks_, pa)    # Add to queue (since we've updated it and it may now have undefvars vars)
+        push!(blockidss_, pa.id)    # Add to queue (since we've updated it and it may now have undefvars vars)
       end
     end
     display(ir)
