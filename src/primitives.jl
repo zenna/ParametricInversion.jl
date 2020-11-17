@@ -30,8 +30,9 @@ function invertapply(::typeof(getindex),
       constants,
       y, 
       φ) where T
-  constants[1].value[constants[2].value] = y
-  (constants[1].value, constants[2].value)
+  arr = [constants[1].value...]
+  arr[constants[2].value] = y   
+  (tuple(arr), constants[2].value)
 end
 
 function invertapply(::typeof(getindex), 
@@ -40,8 +41,9 @@ function invertapply(::typeof(getindex),
   y, 
   φ) where T
   index = rand(1:3)
-  constants[1].value[index] = y
-  (constants[1].value, index)
+  arr = [constants[1].value...]
+  arr[index] = y
+  (tuple(arr), index)
 end
 
 function invertapply(::typeof(getindex), 
@@ -49,19 +51,19 @@ function invertapply(::typeof(getindex),
   constants,
   y, 
   φ) where T
-  newtuple = (ℝ(φ), ℝ(φ), ℝ(φ))
-  newtuple[constants[1].value] = y
-  (newtuple, constants[1].value)
+  arr = [ℝ(φ), ℝ(φ), ℝ(φ)]
+  arr[constants[1].value] = y
+  (tuple(arr), constants[1].value)
 end
 
 function invertapply(::typeof(getindex), 
   types::Type{Tuple{Tuple{Float64, Float64, Float64}, PIConstant{Int64}}},
   y, 
   φ) where T
-  newtuple = (ℝ(φ), ℝ(φ), ℝ(φ))
+  arr = [ℝ(φ), ℝ(φ), ℝ(φ)]
   index = rand(1:3)
-  newtuple[index] = y
-  (newtuple, index)
+  arr[index] = y
+  (tuple(arr), index)
 end
 
 # TODO: likely wrong?
