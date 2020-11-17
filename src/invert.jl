@@ -61,12 +61,17 @@ function invert!(b::Block, invb::Block)
   # since this is not accessible with b[var].type for arguments
   # like for all other variables/statements
   argtype_map = Dict{IRTools.Variable, Type}()
+  argconst_map = Dict{IRTools.Variable, PIConstant}()
 
   # Start at 2 because 1 is the function
   for i in 2:size(IRTools.arguments(b), 1)
     arg = IRTools.arguments(b)[i]
     argtype = IRTools.argtypes(b)[i]
-    argtype_map[arg] = argtype
+    if typeof(argtype) != DataType
+      argconst_map[arg] = PIConstant{typeof(argtype.value)}(argtype.value)
+    else
+      argtype_map[arg] = argtype
+    end
   end
 
   MAGIC = 1  # FIXME
@@ -83,6 +88,8 @@ function invert!(b::Block, invb::Block)
         push!(constants, PIConstant{typeof(arg)}(arg))
       elseif arg in keys(argtype_map)
         push!(arg_types, argtype_map[arg])
+      elseif arg in keys(argconst_map)
+        push!(constants, argconst_map[arg])
       else
         push!(arg_types, b[arg].type)
       end
@@ -90,6 +97,7 @@ function invert!(b::Block, invb::Block)
     arg_types = Tuple{arg_types...}
     constants = tuple(constants...)
 
+    println("lhs: ", lhs)
     # Add inverse statement
     pi_inp = fwd2inv[lhs][MAGIC]    # Input to inverse is output of f app in fwd 
     output_type = stmt.type
@@ -134,6 +142,9 @@ function invert!(b::Block, invb::Block)
   # We must then invdupl them to produce output of the parametric inverse for that
   # one input to the forward function
   for var in arguments(b)[2:end]
+    if !(var in keys(argtype_map))
+      continue
+    end
     duplicates = fwd2inv[var]
     if length(duplicates) == 1
       push!(rettuple, duplicates[1])
@@ -170,6 +181,18 @@ function makemeta(T; world = IRTools.Inner.worldcounter())
   sps = Core.svec(map(untvar, sps)...)
   ci = code_lowered(dummy, Tuple{})[1]
   IRTools.Meta(method, ci, method.nargs, sps)
+end
+
+function invertapplyIR(fwdir::IR)
+  # Construct inverse IR
+  invir = invert(fwdir)
+  Core.println(invir)
+
+  # Finalize
+  argnames_ = [Symbol("#self#"), :f, :t, :arg, :φ]
+  ci = code_lowered(dummy, Tuple{})[1]
+  ci.slotnames = [argnames_...]
+  return update!(ci, invir)
 end
 
 function invertapplytransform(f::Type{F}, t::Type{T}) where {F, T}

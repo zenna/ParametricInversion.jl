@@ -10,21 +10,17 @@ end
 # angles is an array of angles, in order from base to end, in radians. 
 # lengths is an array of segment lengths, in order from base to end, in any (consistent) unit.
 # returns Point(x, y) of final segment. 
-function forward_kinematics(angles, lengths)
-  if (size(angles, 1) != size(lengths, 1))
-    throw(error("parameters angles and lengths must be the same size"))
-  end
+function forward_kinematics(angles, lengths, len)
   x = 0.0
   y = 0.0
   angle_sum = 0.0
-  for i = 1:size(angles, 1)
+  for i = 1:len
     angle_sum += angles[i]
     x += lengths[i] * cos(angle_sum)
     y += lengths[i] * sin(angle_sum)
   end
-  Point(x, y)
+  (x, y)
 end
-
 
 end # module
 
