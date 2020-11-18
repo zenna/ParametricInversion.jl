@@ -1,8 +1,22 @@
-export invert
-using Mjolnir
+export invert, invertapply, cycle
+import Mjolnir
 using IRTools.Inner: Variable, argtypes, arguments
 
+"Mapping from variable to set of variables it corresponds to in inverse"
 const VarMap = Dict{Variable, Vector{Variable}}
+
+"add `v` to `vm[k]`"
+function add!(vm::VarMap, k, v)
+  if k in keys(vm)
+    push!(vm[k], v)
+  else
+    vm[k] = [v]
+  end
+end
+@post [@cap(vm)[k] ; v] == vm[k]
+
+unwrap(x::Type) = x
+unwrap(x::Mjolnir.Const{T}) where {T} = T
 
 "Constant"
 struct PIConstant{T}
@@ -17,17 +31,6 @@ struct PIContext
   paramarg::Variable                # Variable of params (todo: make this dynamicctx)
   invinarg::Variable                # argument for input to the inverse
 end
-
-function set!(vm::VarMap, k, v)
-  if k in keys(vm)
-    push!(vm[k], v)
-  else
-    vm[k] = [v]
-  end
-end
-
-unwrap(x::Type) = x
-unwrap(x::Mjolnir.Const{T}) where {T} = T
 
 """
 Invert a basic block, put results in empty block `invb`
@@ -69,7 +72,7 @@ function invert!(b::Block, invb::Block, ctx::PIContext)
       # TODO: HACK: fix this. this just makes all condition variables false
       #   Instead, use the last element in the path array in ctx.pathvar
       newvar = push!(invb, false)
-      set!(ctx.fwd2inv, branch.condition, newvar)
+      add!(ctx.fwd2inv, branch.condition, newvar)
     end
   end
   # Mapping between argument variables and their types
@@ -122,7 +125,7 @@ function invert!(b::Block, invb::Block, ctx::PIContext)
     elseif length(args) == 1
       # TODO: should unary and nary be handlded differently? do unary inverses return value
       # or tuple?
-      set!(ctx.fwd2inv, args[1], retvar)
+      add!(ctx.fwd2inv, args[1], retvar)
     else
       for (i, arg) in enumerate(args)
         # Skip mapping constants
@@ -131,7 +134,7 @@ function invert!(b::Block, invb::Block, ctx::PIContext)
         end
         stmt = xcall(Base, :getfield, retvar, i)
         retvar2 = push!(invb, stmt)
-        set!(ctx.fwd2inv, arg, retvar2)
+        add!(ctx.fwd2inv, arg, retvar2)
       end
     end
   end
@@ -214,7 +217,7 @@ function addblockargs!(invb::Block, b, ctx)
         continue
       end
       invarg = argument!(invb)
-      set!(ctx.fwd2inv, arg, invarg)
+      add!(ctx.fwd2inv, arg, invarg)
       push!(argset, arg)
     end
   end
@@ -250,23 +253,27 @@ function invert(ir::IR)
   invir
 end
 
-dummy() = return
 
-function invertapplytransform(f::Type{F}, t::Type{T}, φ) where {F, T}
-  # Lookup forward function IR
+function invertir(f::Type{F}, t::Type{T}) where {F, T}
   fwdir = Mjolnir.trace(Mjolnir.Defaults(), F, t.parameters...)
-  nothing
-
-  # Construct inverse IR
   invir = invert(fwdir)
-  Core.println(invir)
+end
+
+invertir(f::Function, types::NTuple{N, DataType}) where {N} = 
+  invertapply(typeof(f), Base.to_tuple_type(types))
+
+function invertapplytransform(f::Type{F}, t::Type{T}) where {F, T}
+  invir = invertir(f, t)
 
   # Finalize
+  # zt - I wrote this (I think) but I'm not sure what they do?
+  dummy() = return
   argnames_ = [Symbol("#self#"), :f, :t, :arg, :φ]
   ci = code_lowered(dummy, Tuple{})[1]
   ci.slotnames = [argnames_...]
   return update!(ci, invir)
 end
+
 
 """
 `invertapply(f, t::Type{T}, arg, φ)`
@@ -292,3 +299,13 @@ end
 function invertapply(f, types::NTuple{N, DataType}, arg, φ) where N
   invertapply(f, Base.to_tuple_type(types), arg, φ)
 end
+
+"`cycle(f, args...)` `xs_` such that f⁻¹(f(args...))"
+cycle(φ, f, args...) =
+  invertapply(f, Base.typesof(args...), f(args...), φ)
+
+cycle(f, args...) = 
+  cycle(defϕ(), f, args...)
+
+"Default paramter space"
+defϕ() = rand(10)

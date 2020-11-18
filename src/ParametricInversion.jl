@@ -25,7 +25,8 @@ include("invert.jl")
 include("param.jl")
 include("primitives.jl")
 include("passes.jl")
-include("tagtraits.jl")
+include("traits.jl")
+include("choose.jl")
 
 
 end

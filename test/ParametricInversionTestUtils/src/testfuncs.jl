@@ -43,9 +43,28 @@ end
 function f2(a, b, c)
   x = a + b + 3
   y = a * c
-  x = if x > 3
-    g(x, x/y)
+  if x > 3
+    g(x + x/y)
   else
-    g(y, x)
+    g(y + x)
   end
+end
+
+## Recursion
+
+function while1(a, b)
+  i = 0
+  for i = 1:5
+    a = a + b
+  end
+  a
+end
+
+function while2(a, n)
+  i = 0
+  while i < n
+    i += 1
+    a = a * n
+  end
+  a
 end
