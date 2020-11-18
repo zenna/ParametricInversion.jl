@@ -27,12 +27,6 @@ stmts(b) =
 "vars used in some form by block `b`"
 usedvars(b) = stmts(b) ∪ branchvars(b) ∪ returnvars(b)
 
-"Denotes that `old` was substituted for `new`"
-struct Sub
-  old::Variable
-  new::Variable
-end
-
 "All"
 branchpreds(block) =
   filter(br -> br.block == block, branches(predecessors(block)))

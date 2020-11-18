@@ -41,11 +41,11 @@ function build_fwdtypes(ir::IR)
     for i in 1:size(IRTools.arguments(block), 1)
       arg = IRTools.arguments(block)[i]
       argtype = IRTools.argtypes(block)[i]
-      fwdtypes[arg] = argtype
+      fwdtypes[arg] = unwrap(argtype)
     end
     for var in keys(block)
       stmt = block[var]
-      fwdtypes[var] = stmt.type
+      fwdtypes[var] = unwrap(stmt.type)
     end
   end
   # println(fwdtypes)

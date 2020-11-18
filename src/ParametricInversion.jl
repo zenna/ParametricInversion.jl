@@ -15,7 +15,6 @@ using IRTools.Inner: argnames!, update!, argument!
 using Mjolnir
 
 export invertapply
-# using ZenUtils
 
 include("util.jl")
 using .Util
@@ -26,5 +25,7 @@ include("invert.jl")
 include("param.jl")
 include("primitives.jl")
 include("passes.jl")
+include("tagtraits.jl")
+
 
 end
