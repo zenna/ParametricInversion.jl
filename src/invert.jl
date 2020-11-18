@@ -253,6 +253,34 @@ function invert(ir::IR)
   invir
 end
 
+function setup!(ir)
+  invb = IRTools.block(invir, 1)
+  # add args for inputs  
+  selfarg = IRTools.argument!(invb)     # self
+  farg = IRTools.argument!(invb)        # f
+  typearg = IRTools.argument!(invb)     # types
+  invinarg = IRTools.argument!(invb)    # input to inverse
+  paramarg = IRTools.argument!(invb)    # Parameters
+  cfg = build_cfg(ir)
+  fwdtypes = build_fwdtypes(ir)
+  ctx = PIContext(cfg, VarMap(), fwdtypes, pathvar, paramarg, invinarg)
+end
+
+function invert(ir::IR)
+  invir = IR()    # Invert IR (has one block already)
+  ctx = setup!(ir)
+
+  # Invert return
+  block = block(ir,)
+  invblock = block(invir, 1)
+  invert!(block, invblock, ctx)
+
+  invertexit!(ir)
+  for b in innerblocks()
+    invert(b)
+  end
+  return invir
+end
 
 function invertir(f::Type{F}, t::Type{T}) where {F, T}
   fwdir = Mjolnir.trace(Mjolnir.Defaults(), F, t.parameters...)
