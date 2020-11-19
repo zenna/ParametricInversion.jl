@@ -19,6 +19,8 @@ export invertapply
 include("util.jl")
 using .Util
 
+include("irutil.jl")
+
 include("cfg.jl")
 include("duplify.jl")
 include("invert.jl")
@@ -27,6 +29,8 @@ include("primitives.jl")
 include("passes.jl")
 include("traits.jl")
 include("choose.jl")
+include("pgf.jl")
+
 
 
 end

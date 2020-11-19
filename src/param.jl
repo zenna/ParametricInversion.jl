@@ -7,3 +7,10 @@ integers(φ) = rand(Int64)
 const ℝ = reals
 const 𝔹 = bools
 const ℤ = integers
+
+
+# TODO: use phi to actually choose a branch intelligently
+# TODO: add arguments like path through blocks? depends on our value addressing scheme.
+function choosebranch(branches, φ)
+  return 1
+end

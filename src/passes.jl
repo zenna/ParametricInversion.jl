@@ -20,6 +20,9 @@ end
 branchvars(b) =
   reduce(vcat, [filter(isvar, [br.args; br.condition]) for br in  branches(b)], init = Variable[])
 
+stmtvars(s::Statement) = 
+  filter(isvar, s.expr.args)
+
 "vars used in statements of `b`"
 stmts(b) = 
   reduce(vcat, [filter(isvar, b[v].expr.args) for v in keys(b)], init = Variable[])
