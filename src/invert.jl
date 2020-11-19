@@ -69,8 +69,6 @@ function setup!(ir, invir)
   ctx = PIContext(cfg, fwd2inv, paramarg, invinarg, vtypes, fwd2inv_block)
 end
 
-# potenial bug Maybe utnary
-funcarguments(b) = arguments(b)[2:end]
 
 # Add return statement to each fwd input clone
 function addreturn!(b::Block, invb::Block, ctx::PIContext)
@@ -79,7 +77,7 @@ function addreturn!(b::Block, invb::Block, ctx::PIContext)
   if b.id == 1
     IRTools.return!(invb, invb)
     # FIXME Replace with first 
-    arginv = [first(ctx.fwd2inv[(arg, invb.id)]) for arg in funcarguments(b)]
+    arginv = [first(ctx.fwd2inv[(arg, invb.id)]) for arg in args(b)]
     tpl = IRTools.xcall(Base, :tuple, arginv...)
     retvar = push!(invb, tpl)
     IRTools.return!(invb, retvar)

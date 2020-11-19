@@ -61,3 +61,7 @@ function incomingbranches(b)
   end
   bs
 end
+
+"Arguments of a statement"
+fargs(stmt::Statement) =
+  length(arguments(stmt)) > 1 ? arguments(stmt)[2:end] : []
