@@ -92,36 +92,34 @@ function invert!(b::Block, invb::Block, ctx::PIContext, knownvars::Set{Variable}
   invb
 end
 
-"Undo each operation statement `%a = f(%x, %y, %z)` in `b`, add to `invb`"
-function reversestatements!(b::Block, invb::Block, ctx::PIContext, knownvars::Set{Variable})
-  for lhs in reverse(keys(b))
-    @show knownvars
-    @show stmt = b[lhs]
-    @show stmtvars_ = stmtvars(stmt)
-    @show unknownvars = setdiff(stmtvars_, knownvars)
-    @show axes = [stmtvars_; lhs]
-    f = stmt.expr.args[1]
+# "Undo each operation statement `%a = f(%x, %y, %z)` in `b`, add to `invb`"
+# function reversestatements!(b::Block, invb::Block, ctx::PIContext, knownvars::Set{Variable})
+#   for lhs in reverse(keys(b))
+#     @show knownvars
+#     @show stmt = b[lhs]
+#     @show stmtvars_ = stmtvars(stmt)
+#     @show unknownvars = setdiff(stmtvars_, knownvars)
+#     @show axes = [stmtvars_; lhs]
+#     f = stmt.expr.args[1]
     
-    @show axesids = [i for (i, axis) in enumerate(axes) if axis in unknownvars]
-    want = Axes{axesids...}
-    @show atypes = stmtargtypes(stmt, ctx.vartypes)
-    # getthething(stmt, axesids)
-    inv_stmt = xcall(ParametricInversion, :choose, f, atypes, want, ctx.paramarg)
-    union!(knownvars, unknownvars)
-    var = push!(invb, inv_stmt)
+#     @show axesids = [i for (i, axis) in enumerate(axes) if axis in unknownvars]
+#     want = Axes{axesids...}
+#     @show atypes = stmtargtypes(stmt, ctx.vartypes)
+#     # getthething(stmt, axesids)
+#     inv_stmt = xcall(ParametricInversion, :choose, f, atypes, want, ctx.paramarg)
+#     union!(knownvars, unknownvars)
+#     var = push!(invb, inv_stmt)
 
-    # add!(ctx.fwd2inv, lhs, invb.id, )
+#     # add!(ctx.fwd2inv, lhs, invb.id, )
 
-    ## So ignoring the constants,
-    ## Let's assume for the minute that we want all teh parameters
-    ## Wanted vars is everything that's not constant
-    ## 
-    println("\n")
-  end
-  invb
-end
-
-# s(stmt, i) = 
+#     ## So ignoring the constants,
+#     ## Let's assume for the minute that we want all teh parameters
+#     ## Wanted vars is everything that's not constant
+#     ## 
+#     println("\n")
+#   end
+#   invb
+# end
 
 function reversestatementssimple!(b::Block, invb::Block, ctx::PIContext, knownvars::Set{Variable})
   # THIS IS HORRID!!
@@ -162,10 +160,6 @@ function reversestatementssimple!(b::Block, invb::Block, ctx::PIContext, knownva
       v_ = push!(invb, xcall(Core, :getfield, var, i))
       add!(ctx.fwd2inv, v, invb.id, v_)
     end
-    # stmtvars_ = stmtvars(stmt)
-    # for v in stmtvars_
-    #   add!(ctx.fwd2inv, v, invb.id, var)
-    # end
   end
   invb
 end
@@ -226,14 +220,6 @@ function invert(ir::IR)
   invir = IR()        # Invert IR (has one block already)
   ctx = setup!(ir, invir) 
 
-  # Invert return
-  # ZT: remove this as a special case
-  # b = blocks(ir)[end]
-  # IRTools.isreturn(b) || error("Final block must be return block")
-  # invb = IRTools.block(invir, 1)
-  # known = Set{Variable}([IRTools.returnvalue(b)])
-  # invert!(b, invb, ctx, known)
-
   for (brr, invbid) in ctx.fwd2inv_block
     invb = IRTools.block(invir, invbid)
     b = IRTools.block(ir, brr.block)
@@ -279,7 +265,6 @@ f(x, y, z) = x * y + z
 x, y, z = invertapply(f, Tuple{Float64, Float64, Float64}, 2.3, rand(3))
 @assert f(x, y, z) == 2.3
 ```
-
 """
 @generated function invertapply(f, t::Type{T}, arg, φ) where T
   return invertapplytransform(f, T)
@@ -289,6 +274,7 @@ function invertapply(f, types::NTuple{N, DataType}, arg, φ) where N
   invertapply(f, Base.to_tuple_type(types), arg, φ)
 end
 
+# zt - Fixme this is type unstable
 "`cycle(f, args...)` `xs_` such that f⁻¹(f(args...))"
 cycle(φ, f, args...) =
   invertapply(f, Base.typesof(args...), f(args...), φ)
