@@ -2,13 +2,17 @@ export choose
 
 "Axes refers to a subset of the axes (aka dimension, column, attributes) of relation"
 const Axes = Tuple
-const X = Axes{1,}
-const Y = Axes{2,}
-const Z = Axes{3,}
-const XY = Axes{1,2}
-const XZ = Axes{2,3}
-const YZ = Axes{2,3}
-const XYZ = Axes{1,2,3}
+
+const Z = Axes{1,}
+const ZA = Axes{1,2}
+const ZB = Axes{1,3}
+const ZC = Axes{1,4}
+const A = Axes{2}
+const B = Axes{3}
+const C = Axes{4}
+const AB = Axes{2, 3}
+const BC = Axes{3, 4}
+const ABC = Axes{2, 3, 4}
 
 "Indicates we have concrete values for some subset of the relation"
 struct Concrete{T<:Axes, V<:Tuple}
@@ -17,12 +21,12 @@ end
 
 Concrete{T}(v::V) where {T,V} = Concrete{T, V}(v)
 
-const cX = Concrete{X}
-const cY = Concrete{Y}
-const cZ = Concrete{Z}
-const cXY = Concrete{XY}
-const cYZ = Concrete{YZ}
-const cXYZ = Concrete{XYZ}
+const cA = Concrete{A}
+const cB = Concrete{B}
+const cC = Concrete{C}
+const cAB = Concrete{AB}
+const cBC = Concrete{BC}
+const cABC = Concrete{ABC}
 
 """
 `choose(f, types, target, data`)``
@@ -42,10 +46,23 @@ const Int2 = Type{Tuple{Int, Int}}
 const Floats2 = Type{Tuple{Float64, Float64}}
 
 # Addition / subtraction relation: x + y = z
-choose(::typeof(+), t::Int2, ::X, (y, z)::cYZ, θ) = (y - z,)
-choose(::typeof(+), t::Int2, ::Type{Z}, xy::cXY, θ) = (xy.vals[1] + xy.vals[2],)
-choose(::typeof(+), t::Int2, ::XY, (z)::cZ, θ) = (z - θ, θ)
+# choose(::typeof(+), t::Int2, ::X, (y, z)::cBC, θ) = (y - z,)
+# choose(::typeof(+), t::Int2, ::Type{Z}, xy::cAB, θ) = (xy.vals[1] + xy.vals[2],)
+# choose(::typeof(+), t::Int2, ::XY, (z)::cB, θ) = (z - θ, θ)
 
-# Substraction is simply a reoirentation of addition
-choose(::typeof(-), t::Int2, ::XZ, (z)::Z, θ) = (z - θ, θ)
+# # Substraction is simply a reoirentation of addition
+# choose(::typeof(-), t::Int2, ::XZ, (z)::Z, θ) = (z - θ, θ)
 
+# +, - relation
+choose(::typeof(+), ::Floats2, ::Type{A}, ::Type{ZB}, z, b, θ) = (z - b,)
+choose(::typeof(+), ::Floats2, ::Type{AB}, ::Type{Z}, z, θ) = 
+  let θ_ = ℝ(θ) ; (z - θ_, θ_) end
+
+# *, / relation
+choose(::typeof(*), ::Floats2, ::Type{B}, ::Type{ZA}, z, a, θ) = 
+  (z / a,)
+
+choose(::typeof(/), ::Floats2, ::Type{AB}, ::Type{Z}, z, θ) =
+  let r = ℝ(θ)
+    (z * r, r)
+  end

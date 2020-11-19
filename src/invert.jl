@@ -1,6 +1,7 @@
 export invert, invertapply, cycle
 import Mjolnir
 using IRTools.Inner: Variable, argtypes, arguments
+const PI = ParametricInversion
 
 "Constant"
 struct PIConstant{T}
@@ -122,7 +123,10 @@ function reversestatements!(b::Block, invb::Block, ctx::PIContext, knownvars::Se
   invb
 end
 
+# s(stmt, i) = 
+
 function reversestatementssimple!(b::Block, invb::Block, ctx::PIContext, knownvars::Set{Variable})
+  # THIS IS HORRID!!
   for lhs in reverse(keys(b))
     stmt = b[lhs]
     f = stmt.expr.args[1]
@@ -130,14 +134,40 @@ function reversestatementssimple!(b::Block, invb::Block, ctx::PIContext, knownva
     # + 1 because ith argument has axis id i + 1, since output id is 1
     axesids = [i + 1 for (i, v) in enumerate(stmt.expr.args[2:end]) if isvar(v)]
     want = Axes{axesids...}
+
+    known_ = [i + 1 for (i, v) in enumerate(stmt.expr.args[2:end]) if !isvar(v)]
+    knownaxes = [1; known_]
+    known = Axes{knownaxes...}
+
+    # Get the arguments
+    lhsininv = ctx.fwd2inv[(lhs, invb.id)]
+    @assert !isempty(lhsininv)
+
+    # function mergevars!(lhsininv, invb)
+    #   stmt = xcall(ParametricInversion, :invdupl, lhsininv...)
+    #   push!(invb, stmt)
+    # end
+
+    # vmerged = mergevars!(lhsininv)
+
+    arg = first(lhsininv)
+    args = [arg; filter(x -> !isvar(x), stmt.expr.args[2:end])]
+
     # What's mssing?
       # What's known, the constants
-    inv_stmt = xcall(ParametricInversion, :choose, f, atypes, want, ctx.paramarg)
+    inv_stmt = xcall(ParametricInversion, :choose, f, atypes, want, known, args..., ctx.paramarg)
     var = push!(invb, inv_stmt)
+
+    # Detuple
     stmtvars_ = stmtvars(stmt)
-    for v in stmtvars_
-      add!(ctx.fwd2inv, v, invb.id, var)
+    for (i, v) in enumerate(stmtvars_)
+      v_ = push!(invb, xcall(Core, :getfield, var, i))
+      add!(ctx.fwd2inv, v, invb.id, v_)
     end
+    # stmtvars_ = stmtvars(stmt)
+    # for v in stmtvars_
+    #   add!(ctx.fwd2inv, v, invb.id, var)
+    # end
   end
   invb
 end
