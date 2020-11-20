@@ -58,6 +58,7 @@ choose(::typeof(+), ::Floats2, ::Type{A}, ::Type{ZB}, z, b, θ) = (z - b,)
 choose(::typeof(+), ::Floats2, ::Type{AB}, ::Type{Z}, z, θ) = 
   let θ_ = ℝ(θ) ; (z - θ_, θ_) end
 
+
 # *, / relation
 choose(::typeof(*), ::Floats2, ::Type{B}, ::Type{ZA}, z, a, θ) = 
   (z / a,)

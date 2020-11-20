@@ -1,4 +1,4 @@
-export invert, invertapply, cycle
+export invert, invertapply, cycle, cycleir
 import Mjolnir
 using IRTools.Inner: Variable, argtypes, arguments
 const PI = ParametricInversion
@@ -11,6 +11,7 @@ end
 struct PIContext
   cfg::CFG
   fwd2inv::VarMap                     # Mapping between variable names in forward and inverse
+  fwd2invmerged::Dict{Variable, Variable} # Maps variable to merged variable
   paramarg::Variable                  # Variable of params (todo: make this dynamicctx)
   invinarg::Variable                  # argument for input to the inverse
   vartypes::Dict{Variable, Type} 
@@ -65,10 +66,10 @@ function setup!(ir, invir)
 
   vtypes = vartypes(ir)
   fwd2inv = VarMap()
+  fwd2invmerged = Dict{Variable, Variable}()
   fwd2inv_block = initinverseblocks!(ir, invir, fwd2inv, invinarg)
-  ctx = PIContext(cfg, fwd2inv, paramarg, invinarg, vtypes, fwd2inv_block)
+  ctx = PIContext(cfg, fwd2inv, fwd2invmerged, paramarg, invinarg, vtypes, fwd2inv_block)
 end
-
 
 # Add return statement to each fwd input clone
 function addreturn!(b::Block, invb::Block, ctx::PIContext)
@@ -76,8 +77,7 @@ function addreturn!(b::Block, invb::Block, ctx::PIContext)
   # display(ctx.fwd2inv)
   if b.id == 1
     IRTools.return!(invb, invb)
-    # FIXME Replace with first 
-    arginv = [first(ctx.fwd2inv[(arg, invb.id)]) for arg in args(b)]
+    arginv = [getjoin!(arg, invb, ctx) for arg in fargs(b)]
     tpl = IRTools.xcall(Base, :tuple, arginv...)
     retvar = push!(invb, tpl)
     IRTools.return!(invb, retvar)
@@ -121,41 +121,60 @@ end
 #   invb
 # end
 
+"Head of expression defined by statement"
+head(stmt::Statement) =  stmt.expr.args[1]
+
+"Returns axes_ where f(s) is true"
+function saxes(s)
+  coords = [s.var; s.stmt.expr.args[2:end]]
+  [(i = i, val = v) for (i, v) in enumerate(coords)]
+end
+
+statements(b::Block) = collect((var = k, stmt = b[k]) for k in keys(b))
+
+function getjoin!(v, b, ctx)
+  # display(ctx.fwd2invmerged)
+  if v in keys(ctx.fwd2invmerged)
+    return ctx.fwd2invmerged[v]
+  else
+    # display(ctx.fwd2inv)
+    invv = ctx.fwd2inv[(v, b.id)]
+    # Singleton, don't bother invdupl
+    if length(invv) == 1
+      v_ = ctx.fwd2invmerged[v] = first(invv)
+    else
+      mergestmt = xcall(PI, :invdupl, invv...)
+      v_ = push!(b, mergestmt)
+      ctx.fwd2invmerged[v] = v_
+    end
+    return v_
+  end
+end
+
 function reversestatementssimple!(b::Block, invb::Block, ctx::PIContext, knownvars::Set{Variable})
-  # THIS IS HORRID!!
-  for lhs in reverse(keys(b))
-    stmt = b[lhs]
-    f = stmt.expr.args[1]
-    atypes = stmtargtypes(stmt, ctx.vartypes)
-    # + 1 because ith argument has axis id i + 1, since output id is 1
-    axesids = [i + 1 for (i, v) in enumerate(stmt.expr.args[2:end]) if isvar(v)]
-    want = Axes{axesids...}
+  # THIS IS A little less  HORRID!!
 
-    known_ = [i + 1 for (i, v) in enumerate(stmt.expr.args[2:end]) if !isvar(v)]
-    knownaxes = [1; known_]
-    known = Axes{knownaxes...}
+  i(x) = x.i
+  val(x) = x.val
 
-    # Get the arguments
-    lhsininv = ctx.fwd2inv[(lhs, invb.id)]
-    @assert !isempty(lhsininv)
+  for s in reverse(statements(b))
+    # axes of all outputs that are variables
+    targetaxes = Axes{i.(filter(a -> a.i != 1 && isvar(a.val), saxes(s)))...}
+    # We know the fwd input and any constants
+    knownaxes = Axes{i.(filter(a -> a.i == 1 || !isvar(a.val), saxes(s)))...}
 
-    # function mergevars!(lhsininv, invb)
-    #   stmt = xcall(ParametricInversion, :invdupl, lhsininv...)
-    #   push!(invb, stmt)
-    # end
+    @assert !isempty(ctx.fwd2inv[(s.var, invb.id)])
 
-    # vmerged = mergevars!(lhsininv)
+    consts = val.(filter(a -> !isvar(a.val), saxes(s)))
+    arg = getjoin!(s.var, invb, ctx)
+    args = [arg; consts]
 
-    arg = first(lhsininv)
-    args = [arg; filter(x -> !isvar(x), stmt.expr.args[2:end])]
+    invstmt = xcall(PI, :choose, head(s.stmt), stmtargtypes(s.stmt, ctx.vartypes),
+                     targetaxes, knownaxes, args..., ctx.paramarg)
+    var = push!(invb, invstmt)
 
-    # What's mssing?
-      # What's known, the constants
-    inv_stmt = xcall(ParametricInversion, :choose, f, atypes, want, known, args..., ctx.paramarg)
-    var = push!(invb, inv_stmt)
-
-    # Detuple
-    stmtvars_ = stmtvars(stmt)
+    # detuple
+    stmtvars_ = stmtvars(s.stmt)
     for (i, v) in enumerate(stmtvars_)
       v_ = push!(invb, xcall(Core, :getfield, var, i))
       add!(ctx.fwd2inv, v, invb.id, v_)
@@ -267,6 +286,7 @@ x, y, z = invertapply(f, Tuple{Float64, Float64, Float64}, 2.3, rand(3))
 ```
 """
 @generated function invertapply(f, t::Type{T}, arg, φ) where T
+  1+1
   return invertapplytransform(f, T)
 end
 
@@ -278,6 +298,9 @@ end
 "`cycle(f, args...)` `xs_` such that f⁻¹(f(args...))"
 cycle(φ, f, args...) =
   invertapply(f, Base.typesof(args...), f(args...), φ)
+
+cycleir(f, args...) =
+  invertir(typeof(f), Base.typesof(args...))
 
 cycle(f, args...) = 
   cycle(defϕ(), f, args...)
