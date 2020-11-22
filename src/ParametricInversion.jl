@@ -1,9 +1,9 @@
 "Julia in reverse: Parametric Inversion in pure Julia"
 module ParametricInversion
 
-using InteractiveUtils
-using IRTools
-using MacroTools
+# using InteractiveUtils
+# using IRTools
+# using MacroTools
 using Spec
 
 using IRTools: Statement, varargs!, insertafter!, xcall, var, IR, Block, Branch, blocks, arguments
@@ -20,11 +20,15 @@ include("util.jl")
 using .Util
 
 include("irutil.jl")
+include("address.jl")
 
 include("cfg.jl")
 include("duplify.jl")
 include("invert.jl")
+
 include("param.jl")
+include("var.jl")
+
 include("primitives.jl")
 include("passes.jl")
 include("traits.jl")

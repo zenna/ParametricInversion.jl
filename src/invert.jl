@@ -1,4 +1,4 @@
-export invert, invertapply, cycle, cycleir
+export invert, invertapply, cycle, cycleir, @cycle, @cycleir
 import Mjolnir
 using IRTools.Inner: Variable, argtypes, arguments
 const PI = ParametricInversion
@@ -9,6 +9,8 @@ struct PIConstant{T}
 end
 
 struct PIContext
+  ir::IR
+  invir::IR
   cfg::CFG
   fwd2inv::VarMap                     # Mapping between variable names in forward and inverse
   fwd2invmerged::Dict{Variable, Variable} # Maps variable to merged variable
@@ -68,7 +70,7 @@ function setup!(ir, invir)
   fwd2inv = VarMap()
   fwd2invmerged = Dict{Variable, Variable}()
   fwd2inv_block = initinverseblocks!(ir, invir, fwd2inv, invinarg)
-  ctx = PIContext(cfg, fwd2inv, fwd2invmerged, paramarg, invinarg, vtypes, fwd2inv_block)
+  ctx = PIContext(ir, invir, cfg, fwd2inv, fwd2invmerged, paramarg, invinarg, vtypes, fwd2inv_block)
 end
 
 # Add return statement to each fwd input clone
@@ -153,9 +155,10 @@ end
 
 function reversestatementssimple!(b::Block, invb::Block, ctx::PIContext, knownvars::Set{Variable})
   # THIS IS A little less  HORRID!!
-
   i(x) = x.i
   val(x) = x.val
+  
+  methodid_ = methodid(ctx.ir)
 
   for s in reverse(statements(b))
     # axes of all outputs that are variables
@@ -169,8 +172,11 @@ function reversestatementssimple!(b::Block, invb::Block, ctx::PIContext, knownva
     arg = getjoin!(s.var, invb, ctx)
     args = [arg; consts]
 
-    invstmt = xcall(PI, :choose, head(s.stmt), stmtargtypes(s.stmt, ctx.vartypes),
-                     targetaxes, knownaxes, args..., ctx.paramarg)
+    # Location
+    loc = Loc(methodid_, s.var)
+
+    invstmt = xcall(PI, :choose, ctx.paramarg, loc, head(s.stmt), stmtargtypes(s.stmt, ctx.vartypes),
+                     targetaxes, knownaxes, args...)
     var = push!(invb, invstmt)
 
     # detuple
@@ -190,7 +196,7 @@ function addbranches!(b, invb::Block, ctx)
   
   # Parametrically choose among possible incoming edges
   parentbids = tuple((ctx.fwd2inv_block[bbr] for bbr in branches)...)
-  chosen = push!(invb, xcall(ParametricInversion, :choosebranch, parentbids, ctx.paramarg))
+  chosen = push!(invb, xcall(PI, :choosebranch, parentbids, ctx.paramarg))
 
   # For each parent make a branch point
   for (i, bbr) in enumerate(branches)
@@ -237,7 +243,7 @@ end
 "`ir::IR` that computes inverse inverse of `ir`"
 function invert(ir::IR)
   invir = IR()        # Invert IR (has one block already)
-  ctx = setup!(ir, invir) 
+  ctx = setup!(ir, invir)
 
   for (brr, invbid) in ctx.fwd2inv_block
     invb = IRTools.block(invir, invbid)
@@ -286,7 +292,6 @@ x, y, z = invertapply(f, Tuple{Float64, Float64, Float64}, 2.3, rand(3))
 ```
 """
 @generated function invertapply(f, t::Type{T}, arg, φ) where T
-  1+1
   return invertapplytransform(f, T)
 end
 
@@ -303,7 +308,35 @@ cycleir(f, args...) =
   invertir(typeof(f), Base.typesof(args...))
 
 cycle(f, args...) = 
-  cycle(defϕ(), f, args...)
+  cycle(defθ(), f, args...)
 
-"Default paramter space"
-defϕ() = rand(10)
+
+function cyclem(ex)
+  if IRTools.isexpr(ex, :call)
+    f, args = ex.args[1], ex.args[2:end]
+  elseif IRTools.isexpr(ex, :do)
+    f, args = ex.args[1].args[1], vcat(ex.args[2], ex.args[1].args[2:end])
+  else
+    error("@code_ir f(args...)")
+  end
+  esc(:(cycle(ParametricInversion.defθ(), $f, $args...)))
+end
+
+function cycleirm(ex)
+  if IRTools.isexpr(ex, :call)
+    f, args = ex.args[1], ex.args[2:end]
+  elseif IRTools.isexpr(ex, :do)
+    f, args = ex.args[1].args[1], vcat(ex.args[2], ex.args[1].args[2:end])
+  else
+    error("@code_ir f(args...)")
+  end
+  esc(:(cycleir($f, $args...)))
+end
+
+macro cycle(ex)
+  cyclem(ex)
+end
+
+macro cycleir(ex)
+  cycleirm(ex)
+end

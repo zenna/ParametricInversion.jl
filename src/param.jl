@@ -1,16 +1,15 @@
 # Shortcuts for now
-unit(φ) = rand()
-bools(φ) = unit(φ) > 0.5
-bound(φ, a, b) = unit(φ) * b - a + a
-reals(φ) = unit(φ) * 1000.0
-integers(φ) = rand(Int64)
+export reals, bools, integers, unit
+
+bools(θ) = unit(θ) > 0.5
+bound(θ, a, b, c) = unit(θ, T) * b - a + a
+reals(θ, T = Float64) = (unit(θ, T) - 0.5) * 100.0
+integers(θ) = rand(Int64)
+
 const ℝ = reals
 const 𝔹 = bools
 const ℤ = integers
 
-
-# TODO: use phi to actually choose a branch intelligently
-# TODO: add arguments like path through blocks? depends on our value addressing scheme.
-function choosebranch(branches, φ)
+function choose(branches, θ)
   return 1
 end

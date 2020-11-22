@@ -1,5 +1,6 @@
 # No consts, no duplication 
-
+export while2,
+       fdupl
 function f_easy(x, y, z)
   a = x + y
   b = a * z
@@ -32,7 +33,7 @@ function f4(a)
   x = a + a
 end
 
-function fd(a, b)
+function fdupl(a, b)
   z = a / b
   a + z
 end

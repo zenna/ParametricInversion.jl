@@ -54,16 +54,18 @@ const Floats2 = Type{Tuple{Float64, Float64}}
 # choose(::typeof(-), t::Int2, ::XZ, (z)::Z, θ) = (z - θ, θ)
 
 # +, - relation
-choose(::typeof(+), ::Floats2, ::Type{A}, ::Type{ZB}, z, b, θ) = (z - b,)
-choose(::typeof(+), ::Floats2, ::Type{AB}, ::Type{Z}, z, θ) = 
+choose(θ, ::typeof(+), ::Floats2, ::Type{A}, ::Type{ZB}, z, b) = (z - b,)
+choose(θ, ::typeof(+), ::Floats2, ::Type{AB}, ::Type{Z}, z) = 
   let θ_ = ℝ(θ) ; (z - θ_, θ_) end
 
 
 # *, / relation
-choose(::typeof(*), ::Floats2, ::Type{B}, ::Type{ZA}, z, a, θ) = 
+choose(θ, ::typeof(*), ::Floats2, ::Type{B}, ::Type{ZA}, z, a) = 
   (z / a,)
 
-choose(::typeof(/), ::Floats2, ::Type{AB}, ::Type{Z}, z, θ) =
+choose(θ, ::typeof(/), ::Floats2, ::Type{AB}, ::Type{Z}, z) =
   let r = ℝ(θ)
     (z * r, r)
   end
+
+choose(θ, loc::Loc, args...) = choose(project(θ, loc), args...)
