@@ -8,7 +8,7 @@ using Spec
 
 using IRTools: Statement, varargs!, insertafter!, xcall, var, IR, Block, Branch, blocks, arguments
 using IRTools.Inner: Variable 
-using IRTools
+import IRTools
 using IRTools: varargs!, inlineable!, pis!, slots!, IR, var, xcall
 using IRTools.Inner: argnames!, update!, argument!
 

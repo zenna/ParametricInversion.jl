@@ -44,6 +44,7 @@ function choose end
 
 const Int2 = Type{Tuple{Int, Int}}
 const Floats2 = Type{Tuple{Float64, Float64}}
+# const RealsT{T} = Type{Tuple{ where T<:
 
 # Addition / subtraction relation: x + y = z
 # choose(::typeof(+), t::Int2, ::X, (y, z)::cBC, θ) = (y - z,)
@@ -54,10 +55,12 @@ const Floats2 = Type{Tuple{Float64, Float64}}
 # choose(::typeof(-), t::Int2, ::XZ, (z)::Z, θ) = (z - θ, θ)
 
 # +, - relation
-choose(θ, ::typeof(+), ::Floats2, ::Type{A}, ::Type{ZB}, z, b) = (z - b,)
-choose(θ, ::typeof(+), ::Floats2, ::Type{AB}, ::Type{Z}, z) = 
+choose(θ, ::typeof(+), ::Type{NTuple{2, <:Real}}, ::Type{A}, ::Type{ZB}, z, b) = (z - b,)
+choose(θ, ::typeof(+), ::Type{<:NTuple{2, <:Real}}, ::Type{AB}, ::Type{Z}, z) = 
   let θ_ = ℝ(θ) ; (z - θ_, θ_) end
 
+choose(θ, ::typeof(+), ::Type{Tuple{Int, Int}}, ::Type{AB}, ::Type{Z}, z) = 
+  let θ_ = ℝ(θ) ; (z - θ_, θ_) end
 
 # *, / relation
 choose(θ, ::typeof(*), ::Floats2, ::Type{B}, ::Type{ZA}, z, a) = 
@@ -67,5 +70,6 @@ choose(θ, ::typeof(/), ::Floats2, ::Type{AB}, ::Type{Z}, z) =
   let r = ℝ(θ)
     (z * r, r)
   end
+
 
 choose(θ, loc::Loc, args...) = choose(project(θ, loc), args...)
