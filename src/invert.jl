@@ -292,9 +292,7 @@ x, y, z = invertapply(f, Tuple{Float64, Float64, Float64}, 2.3, rand(3))
 ```
 """
 @generated function invertapply(f, t::Type{T}, arg, φ) where T
-  ir = invertapplytransform(f, T)
-  Core.print(ir)
-  return ir
+  return invertapplytransform(f, T)
 end
 
 function invertapply(f, types::NTuple{N, DataType}, arg, φ) where N

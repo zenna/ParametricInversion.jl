@@ -66,6 +66,14 @@ choose(θ, ::typeof(+), ::Type{Tuple{Int, Int}}, ::Type{AB}, ::Type{Z}, z) =
 choose(θ, ::typeof(*), ::Floats2, ::Type{B}, ::Type{ZA}, z, a) = 
   (z / a,)
 
+function choose(θ, ::typeof(*), ::Floats2, ::Type{AB}, ::Type{Z}, z)
+  b = 𝔹(θ)
+  v = ℝ(θ)
+  b ? (z/v, v) : (v, z/v)
+end
+
+
+
 choose(θ, ::typeof(/), ::Floats2, ::Type{AB}, ::Type{Z}, z) =
   let r = ℝ(θ)
     (z * r, r)
