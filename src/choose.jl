@@ -72,12 +72,9 @@ function choose(θ, ::typeof(*), ::Floats2, ::Type{AB}, ::Type{Z}, z)
   b ? (z/v, v) : (v, z/v)
 end
 
-
-
 choose(θ, ::typeof(/), ::Floats2, ::Type{AB}, ::Type{Z}, z) =
   let r = ℝ(θ)
     (z * r, r)
   end
-
 
 choose(θ, loc::Loc, args...) = choose(project(θ, loc), args...)

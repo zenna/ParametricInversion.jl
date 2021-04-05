@@ -310,7 +310,6 @@ cycleir(f, args...) =
 cycle(f, args...) = 
   cycle(defθ(), f, args...)
 
-
 function cyclem(ex)
   if IRTools.isexpr(ex, :call)
     f, args = ex.args[1], ex.args[2:end]
