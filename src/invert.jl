@@ -311,4 +311,3 @@ end
 function invertapply(f, types::NTuple{N, DataType}, arg, φ) where N
   invertapply(f, Base.to_tuple_type(types), arg, φ)
 end
-
