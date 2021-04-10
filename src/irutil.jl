@@ -65,3 +65,9 @@ end
 "Arguments of a statement"
 fargs(b::Block) =
   length(arguments(b)) > 1 ? arguments(b)[2:end] : []
+
+"Head of expression defined by statement"
+head(stmt::Statement) =  stmt.expr.args[1]
+
+"Each statement of block `b` and associated Variable"
+statements(b::Block) = collect((var = k, stmt = b[k]) for k in keys(b))

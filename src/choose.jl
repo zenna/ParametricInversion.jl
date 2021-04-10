@@ -14,6 +14,8 @@ const AB = Axes{2, 3}
 const BC = Axes{3, 4}
 const ABC = Axes{2, 3, 4}
 
+inputaxes(t::Tuple{T}) where T <: Tuple = Axes{2:2+length(T)...}
+
 "Indicates we have concrete values for some subset of the relation"
 struct Concrete{T<:Axes, V<:Tuple}
   vals::V
@@ -29,16 +31,17 @@ const cBC = Concrete{BC}
 const cABC = Concrete{ABC}
 
 """
-`choose(f, types, target, data`)``
+`choose(θ, loc, f, types, target, known)`
 
-Parametrically choose a value for variables in relation defiend by `f`,
-given information about others.
+Parametrically choose a value for variables in relation defined by method
+`f(::types..)`, given information about other values in relation.
 
 # Arguments
-`f(::types...)` - method to choose
-`target` - which axis we wish to choose onto
-`data`   - data we have on the relation
-`θ`      - Parameters to choose
+- `f(::types...)` - method to choose from
+- `loc`     - Location
+- `target` - which axis we wish to choose onto
+- `given`  - what is given/known about values of the relation (e.g. value of input)
+- `θ`      - Parameter values which determine which element to choose
 """
 function choose end
 
@@ -58,6 +61,7 @@ const Floats2 = Type{Tuple{Float64, Float64}}
 choose(θ, ::typeof(+), ::Type{NTuple{2, <:Real}}, ::Type{A}, ::Type{ZB}, z, b) = (z - b,)
 choose(θ, ::typeof(+), ::Type{<:NTuple{2, <:Real}}, ::Type{AB}, ::Type{Z}, z) = 
   let θ_ = ℝ(θ) ; (z - θ_, θ_) end
+
 
 choose(θ, ::typeof(+), ::Type{Tuple{Int, Int}}, ::Type{AB}, ::Type{Z}, z) = 
   let θ_ = ℝ(θ) ; (z - θ_, θ_) end

@@ -1,6 +1,8 @@
-export invert, invertapply, cycle, cycleir, @cycle, @cycleir
 import Mjolnir
 using IRTools.Inner: Variable, argtypes, arguments
+
+export invert, invertapply, cycle, cycleir, @cycle, @cycleir
+
 const PI = ParametricInversion
 
 "Constant"
@@ -8,6 +10,7 @@ struct PIConstant{T}
   value::T
 end
 
+# State carried around during inversion
 struct PIContext
   ir::IR
   invir::IR
@@ -123,16 +126,11 @@ end
 #   invb
 # end
 
-"Head of expression defined by statement"
-head(stmt::Statement) =  stmt.expr.args[1]
-
 "Returns axes_ where f(s) is true"
 function saxes(s)
   coords = [s.var; s.stmt.expr.args[2:end]]
   [(i = i, val = v) for (i, v) in enumerate(coords)]
 end
-
-statements(b::Block) = collect((var = k, stmt = b[k]) for k in keys(b))
 
 function getjoin!(v, b, ctx)
   # display(ctx.fwd2invmerged)
@@ -245,6 +243,7 @@ function invert(ir::IR)
   invir = IR()        # Invert IR (has one block already)
   ctx = setup!(ir, invir)
 
+  # For each block in forward create inverse block invir
   for (brr, invbid) in ctx.fwd2inv_block
     invb = IRTools.block(invir, invbid)
     b = IRTools.block(ir, brr.block)
@@ -261,8 +260,12 @@ function invertir(f::Type{F}, t::Type{T}) where {F, T}
 end
 
 invertir(f::Function, types::NTuple{N, DataType}) where {N} = 
-  invertapply(f, Base.to_tuple_type(types))
+  invertir(typeof(f), Base.to_tuple_type(types))
 
+
+# TODO, will have to add target to this,
+# TODO: What about given.  There's the valus themselves, e.g. the input to
+# inverse in case of inversion, as well as the tpe of information
 function invertapplytransform(f::Type{F}, t::Type{T}) where {F, T}
   invir = invertir(f, t)
 
@@ -274,6 +277,16 @@ function invertapplytransform(f::Type{F}, t::Type{T}) where {F, T}
   ci.slotnames = [argnames_...]
   return update!(ci, invir)
 end
+
+
+# todo:
+# function choose(θ, loc, f, t, target, given)
+#   # Produce the ir, and apply as function
+# end
+
+# Inversion is a special case of choose -- Want the input, have output
+# invertapply(f, t, arg, φ) = choose(θ, loc, f, inputaxes(t), Z)
+# todo What about loc?
 
 """
 `invertapply(f, t::Type{T}, arg, φ)`
@@ -299,44 +312,3 @@ function invertapply(f, types::NTuple{N, DataType}, arg, φ) where N
   invertapply(f, Base.to_tuple_type(types), arg, φ)
 end
 
-# zt - Fixme this is type unstable
-"`cycle(f, args...)` `xs_` such that f⁻¹(f(args...))"
-cycle(φ, f, args...) =
-  invertapply(f, Base.typesof(args...), f(args...), φ)
-
-cycleir(f, args...) =
-  invertir(typeof(f), Base.typesof(args...))
-
-cycle(f, args...) = 
-  cycle(defθ(), f, args...)
-
-
-function cyclem(ex)
-  if IRTools.isexpr(ex, :call)
-    f, args = ex.args[1], ex.args[2:end]
-  elseif IRTools.isexpr(ex, :do)
-    f, args = ex.args[1].args[1], vcat(ex.args[2], ex.args[1].args[2:end])
-  else
-    error("@code_ir f(args...)")
-  end
-  esc(:(cycle(ParametricInversion.defθ(), $f, $args...)))
-end
-
-function cycleirm(ex)
-  if IRTools.isexpr(ex, :call)
-    f, args = ex.args[1], ex.args[2:end]
-  elseif IRTools.isexpr(ex, :do)
-    f, args = ex.args[1].args[1], vcat(ex.args[2], ex.args[1].args[2:end])
-  else
-    error("@code_ir f(args...)")
-  end
-  esc(:(cycleir($f, $args...)))
-end
-
-macro cycle(ex)
-  cyclem(ex)
-end
-
-macro cycleir(ex)
-  cycleirm(ex)
-end
