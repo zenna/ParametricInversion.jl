@@ -5,7 +5,7 @@ const BranchId = Int
 # d[(v1, id) = v2] means that v1 in ir corresponds to v2 on invblock id
 const VarMap = Dict{Tuple{Variable, BlockId}, Set{Variable}}
 
-# A Branch on a Block
+# A Branch on a Block -- need this because branches on different blocks share same id
 const BranchBlock = NamedTuple{(:branch, :block), Tuple{BranchId, BlockId}}
 
 "add `v` to `vm[k]`"

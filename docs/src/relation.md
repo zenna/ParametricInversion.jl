@@ -6,13 +6,14 @@ To appreciate this, let's first establish some of the basic properties of relati
 
 ## Relations
 <!-- A relation $R$ is a set of tuples. -->
-A finitary relation over sets $X_1, \dots, X_n$ is a subset of the Cartesian product $X_1 \times \cdots \times X_n$; that is, it is a set of n-tuples $(x_1, \dots, x_n)$ consisting of elements $x_i$ in $X_i$.
+A relation over sets $X_1, \dots, X_n$ is a subset of the Cartesian product $X_1 \times \cdots \times X_n$; that is, it is a set of n-tuples $(x_1, \dots, x_n)$ consisting of elements $x_i$ in $X_i$.
 
 <!-- These sets can be infinite; the finitaryness of a finitary relation means that the number of dimensions is finite, i.e., $n \in \mathbb{N}$. -->
 
-The non-negative integer $n$ giving the number of "places" in the relation is called the arity, adicity or degree of the relation. A relation with $n$ "places" is variously called an $n$-ary relation. Relations with a finite number of places are called finitary relations.
+The non-negative integer $n$ giving the number of "places" in the relation is called the arity, adicity or degree of the relation. A relation with $n$ "places" is variously called an $n$-ary relation.
+Relations with a finite number of places are called finitary relations.
 
-For instance, addition is a a relation:
+For instance, addition is a relation, which we will call $R_+$:
 
 $$
 \{(0, 0, 0), (1, 0, 1), (1, 1, 0), (2, 1, 1) \dots\}
@@ -31,9 +32,7 @@ Another way to represent a relation is as a table.
 
 ## Reasoning Using (Functional) Relations
 
-Suppose I tell you that $a = 2$ and $b = 3$, and I want the value of $z$.  We can provide an answer to this question by applying a sequence of transformations to the relation.  In order:
-
-1. Restrict relation to select only those values that are consistent with the given information, yielding:
+Suppose I tell you that $a = 2$ and $b = 3$, and I want the value of $z$.  We can provide an answer to this question by applying a restricting the relation to select only those values that are consistent with the given information, yielding:
 
 | z | a | b |
 |---|---|---|
@@ -41,21 +40,25 @@ Suppose I tell you that $a = 2$ and $b = 3$, and I want the value of $z$.  We ca
 | ~~4~~ | ~~2~~ | ~~2~~ |
 | ~~4~~ | ~~3~~ | ~~1~~ |
 
-Naturally, this operation is called a __selection__, and performed by an operation called $\sigma$.
+Naturally, this operation is called a __selection__, and performed by an operation called $\sigma$ ("s" in sigma corresponds to "s" in selection).
 
-The selection function $\sigma : \Phi \times \mathcal{R}$ [define selection]
+The selection function $\sigma : \Phi \times \mathcal{R} \to \mathcal{R}$ filters out all elements of a relation $R \in \mathcal{R}$ (the set of relations) which are inconsistent with a predicate $\varphi \in \Phi$.
 
+In this example, the selection predicate is $\varphi(x) := x_a = 2 \land x_b = 3$.
+Applying selection operator $\sigma_\varphi$ to $R$ yields $R_\varphi = \sigma_\varphi(R_+)$ where $R_\varphi = \{x \mid \varphi(x), x \in R_+\}$.
 
-In this example, $\varphi(x) := x_a = 2 \land x_b = 3$ and we have applied the selection operator $\sigma_\varphi$ to yield $R_\varphi = \sigma_\varphi(R_+)$.
-
-A single row remains -- $R_\varphi$ is the singleton set $(5, 2, 3)$.  This is true not just for the particular values $a = 2$ and $b = 3$, but forall values of $a$ and $b$.
-In other words, given a value for $a$ and $b$, there is always a single value of $z$.
+After selection, a single row remains.
+A relation with a single set is called a *singeleton* ($R_\varphi$ is the singleton set $(5, 2, 3)$).  The selection produces a singleton relation not just for $\varphi := x_a = 2 \land x_b = 3$, but forall values of $a$ and $b$.
+In other words, given values for $a$ and $b$, there is always a single value of $z$.
 In this case, we shall say $R$ is *functional* on $\{a, b\} \to \{z\}$.
 
-__Definition__: A relation $R$ is function on $\{x_1, \dots, x_n\} \to \{y_1, \dots, y_m \}$ if and only if all of the following conditions hold:
-(i) dd
+__Definition__: A relation $R$ is functional on $\{x_1, \dots, x_n\} \to \{y_1, \dots, y_m \}$ if and only if all of the following conditions hold:
+(i) for all $x_1, x_2, \dots, x_n$ $\sigma_\varphi(R)$ is a singleton relation where $\varphi = x_1 = x \land x_2 = x_2 \land \cdots \land x_n = x_n$
+
+We can see then that $R_+$ is functional on $\{a, b\}$, on ${a, b}$
 
 Why do functional relations matter?
+They matter because 
  
 2. Extract the $Z$ axis
 
@@ -63,9 +66,8 @@ Why do functional relations matter?
 
 
 
-Now suppose I tell you that $z = 4$ and I want the values of $a$ and $b$.  Following the previous steps:
-
-1. Restriction
+Now suppose I tell you that $z = 4$ and I want the values of $a$ and $b$.
+Applying the corresponding selection to $R_+$ yields a new relation:
 
 | Z | A | B |
 |---|---|---|
@@ -73,7 +75,7 @@ Now suppose I tell you that $z = 4$ and I want the values of $a$ and $b$.  Follo
 | 4 | 2 | 2 |
 | 4 | 3 | 1 |
 
-After selection, infinitely many rows remain, two of which are shown here.
+This time, after selection, infinitely many rows remain, two of which are shown here.
 The primary idea that parametric relational programming inherits from parametric inversion is to parametrically represent this set.  To do this, we introduce the concept of **extending** a relation with a parameter space.
 <!-- 
 The relational perspective allows us to consider other things we might want to do with a relation than just compute the input given the output.
@@ -148,17 +150,43 @@ Unfortuantely, is not represented as an explicit enumerable set or table, not le
 Given a program, there are many ways in which we can reorder these executions.
 
 Suppose we have the forward function:
+
+```julia
+function f(a, b)
+  v1 = a * b
+  v2 = a + v1
+end
+```
+
+In SSA IR, this is:
+
 ```
 julia> @code_ir g(1,2)
 1: (%1, %2, %3)
-  %4 = %2 + %3
-  %5 = %4 + %4
-  %6 = %4 * %4
-  %7 = %6 + %5
-  %8 = %3 * %4
-  %9 = %8 + %7
-  return %9
+  %4 = %2 * %3
+  %5 = %4 + %2
+  return %5
 ```
+
+In graphical form, this is:
+
+The basic idea behind parametric relational programming is that there is a great deal of flexibility in the order in which we execute statements.
+In this example, we know the value of the output $z$ and we want the inputs $a$ and $b$.
+
+Here are two possible strategies:
+
+1. Parametrically invert $+$ to yield values for $a$ and $v1$
+2. Parametrically invert $*$ to yield values for $a$ and $b$
+
+If we produced two different values for $a$ in these steps then that is an inconsistency error.  That is, we chose "wrong" parameter values.
+
+But here's a better strategy that side steps this problem
+
+1. Choose a value for $a$
+2. Invert $+$ to yield values for $v1$ given the values for $a$ and $v2$
+3. Invert $*$ to yield a value for $b$ given $a$
+
+
 
 Q: Should we be able to reorient to internal values?
 

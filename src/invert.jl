@@ -20,7 +20,7 @@ struct PIContext
   paramarg::Variable                  # Variable of params (todo: make this dynamicctx)
   invinarg::Variable                  # argument for input to the inverse
   vartypes::Dict{Variable, Type} 
-  fwd2inv_block::Dict{BranchBlock, BlockId} # maps blockbranch in forward to inverse block id
+  fwd2inv_block::Dict{BranchBlock, BlockId} # maps bbr::BranchBlock in forward to inverse block id
 end
 
 # Creates a block in inverse for each branch point in forward
@@ -80,7 +80,7 @@ end
 function addreturn!(b::Block, invb::Block, ctx::PIContext)
   invretblocks = filter(bbr -> bbr.block == 1, keys(ctx.fwd2inv_block))
   # display(ctx.fwd2inv)
-  if b.id == 1
+  if b.id == 1 # zt: this is incomplete -- it's currently not usign invretblocks
     IRTools.return!(invb, invb)
     arginv = [getjoin!(arg, invb, ctx) for arg in fargs(b)]
     tpl = IRTools.xcall(Base, :tuple, arginv...)
@@ -97,36 +97,36 @@ function invert!(b::Block, invb::Block, ctx::PIContext, knownvars::Set{Variable}
   invb
 end
 
-# "Undo each operation statement `%a = f(%x, %y, %z)` in `b`, add to `invb`"
-# function reversestatements!(b::Block, invb::Block, ctx::PIContext, knownvars::Set{Variable})
-#   for lhs in reverse(keys(b))
-#     @show knownvars
-#     @show stmt = b[lhs]
-#     @show stmtvars_ = stmtvars(stmt)
-#     @show unknownvars = setdiff(stmtvars_, knownvars)
-#     @show axes = [stmtvars_; lhs]
-#     f = stmt.expr.args[1]
+"Undo each operation statement `%a = f(%x, %y, %z)` in `b`, add to `invb`"
+function reversestatements!(b::Block, invb::Block, ctx::PIContext, knownvars::Set{Variable})
+  for lhs in reverse(keys(b))
+    @show knownvars
+    @show stmt = b[lhs]
+    @show stmtvars_ = stmtvars(stmt)
+    @show unknownvars = setdiff(stmtvars_, knownvars)
+    @show axes = [stmtvars_; lhs]
+    f = stmt.expr.args[1]
     
-#     @show axesids = [i for (i, axis) in enumerate(axes) if axis in unknownvars]
-#     want = Axes{axesids...}
-#     @show atypes = stmtargtypes(stmt, ctx.vartypes)
-#     # getthething(stmt, axesids)
-#     inv_stmt = xcall(ParametricInversion, :choose, f, atypes, want, ctx.paramarg)
-#     union!(knownvars, unknownvars)
-#     var = push!(invb, inv_stmt)
+    @show axesids = [i for (i, axis) in enumerate(axes) if axis in unknownvars]
+    want = Axes{axesids...}
+    @show atypes = stmtargtypes(stmt, ctx.vartypes)
+    # getthething(stmt, axesids)
+    inv_stmt = xcall(ParametricInversion, :choose, f, atypes, want, ctx.paramarg)
+    union!(knownvars, unknownvars)
+    var = push!(invb, inv_stmt)
 
-#     # add!(ctx.fwd2inv, lhs, invb.id, )
+    # add!(ctx.fwd2inv, lhs, invb.id, )
 
-#     ## So ignoring the constants,
-#     ## Let's assume for the minute that we want all teh parameters
-#     ## Wanted vars is everything that's not constant
-#     ## 
-#     println("\n")
-#   end
-#   invb
-# end
+    ## So ignoring the constants,
+    ## Let's assume for the minute that we want all teh parameters
+    ## Wanted vars is everything that's not constant
+    ## 
+    println("\n")
+  end
+  invb
+end
 
-"Returns axes_ where f(s) is true"
+"zt: fixme0"
 function saxes(s)
   coords = [s.var; s.stmt.expr.args[2:end]]
   [(i = i, val = v) for (i, v) in enumerate(coords)]
@@ -152,12 +152,12 @@ function getjoin!(v, b, ctx)
 end
 
 function reversestatementssimple!(b::Block, invb::Block, ctx::PIContext, knownvars::Set{Variable})
-  # THIS IS A little less  HORRID!!
   i(x) = x.i
   val(x) = x.val
   
   methodid_ = methodid(ctx.ir)
 
+  # In reverse order, for each statement 
   for s in reverse(statements(b))
     # axes of all outputs that are variables
     targetaxes = Axes{i.(filter(a -> a.i != 1 && isvar(a.val), saxes(s)))...}
@@ -167,8 +167,8 @@ function reversestatementssimple!(b::Block, invb::Block, ctx::PIContext, knownva
     @assert !isempty(ctx.fwd2inv[(s.var, invb.id)])
 
     consts = val.(filter(a -> !isvar(a.val), saxes(s)))
-    arg = getjoin!(s.var, invb, ctx)
-    args = [arg; consts]
+    arg = getjoin!(s.var, invb, ctx) # zt : does this handle multiple merges, correctly?
+    args = [arg; consts] # zt: rename args to inverse
 
     # Location
     loc = Loc(methodid_, s.var)
@@ -187,14 +187,16 @@ function reversestatementssimple!(b::Block, invb::Block, ctx::PIContext, knownva
   invb
 end
 
-# Add branches in inverse direction from block to its predecessors (in forward)
+function choosebranch end 
+
+# Add branches to invb from each block to its predecessors (in forward)
 function addbranches!(b, invb::Block, ctx)
   branches = incomingbranches(b)
   isempty(branches) && return invb  # No incoming branches, nothing to do!
   
   # Parametrically choose among possible incoming edges
   parentbids = tuple((ctx.fwd2inv_block[bbr] for bbr in branches)...)
-  chosen = push!(invb, xcall(PI, :choosebranch, parentbids, ctx.paramarg))
+  chosen = push!(invb, xcall(PI, :choosebranch, parentbids, ctx.paramarg)) # zt: specialise case when there's only one parent
 
   # For each parent make a branch point
   for (i, bbr) in enumerate(branches)
@@ -222,16 +224,18 @@ function addbranches!(b, invb::Block, ctx)
   end
 end
 
-"When entering `block` at branchpoint `brid`, which variables are known?"
+"""
+When entering `block` at branchpoint `brid`, which variables are known?
+"""
 function knownvars(block, brid::BranchId)
   known_ = Set{Variable}()
   # Go in reverse order from branch upwards
   # Because we know all the conditions above (and including)
   # the branch point
   for i = brid:-1:1
-    br = IRTools.branches(block)[brid]
+    br = IRTools.branches(block)[i]
     for a in br.args
-      isvar(a) && push!(known_, a)
+      isvar(a) && push!(known_, a) # zt - is this correct? should we know these?
     end
     isvar(br.condition) && push!(known_, br.condition)
   end
@@ -244,10 +248,10 @@ function invert(ir::IR)
   ctx = setup!(ir, invir)
 
   # For each block in forward create inverse block invir
-  for (brr, invbid) in ctx.fwd2inv_block
+  for (bbr, invbid) in ctx.fwd2inv_block
     invb = IRTools.block(invir, invbid)
-    b = IRTools.block(ir, brr.block)
-    known_ = knownvars(b, brr.branch)
+    b = IRTools.block(ir, bbr.block)
+    known_ = knownvars(b, bbr.branch)
     invert!(b, invb, ctx, known_)
   end
   return invir
@@ -255,7 +259,8 @@ end
 
 function invertir(f::Type{F}, t::Type{T}) where {F, T}
   fwdir = Mjolnir.trace(Mjolnir.Defaults(), F, t.parameters...)
-  IRTools.explicitbranch!(fwdir)
+  IRTools.explicitbranch!(fwdir)  # IR-transforms assumes no implicit branching
+  fwdir |> IRTools.expand! |> IRTools.explicitbranch!
   invir = invert(fwdir)
 end
 
@@ -307,6 +312,9 @@ x, y, z = invertapply(f, Tuple{Float64, Float64, Float64}, 2.3, rand(3))
 @generated function invertapply(f, t::Type{T}, arg, φ) where T
   return invertapplytransform(f, T)
 end
+
+# zt: change this to choose(θ, loc, t::Type{T}, target, known)
+# zt: invertapply(f, t::Type{Tuple}, arg, φ) = choose(...)
 
 function invertapply(f, types::NTuple{N, DataType}, arg, φ) where N
   invertapply(f, Base.to_tuple_type(types), arg, φ)
