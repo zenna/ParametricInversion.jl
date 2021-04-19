@@ -90,7 +90,7 @@ function addreturn!(b::Block, invb::Block, ctx::PIContext)
 end
 
 "invert block `b`, store result in `invb`, assume v ∈ `knownvars` is known"
-function invert!(b::Block, invb::Block, ctx::PIContext, knownvars::Set{Variable})
+function invert!(b::Block, invb::Block, ctx::PIContext, knownvars::Dict{Variable, Any})
   reversestatementssimple!(b, invb, ctx, knownvars)
   addbranches!(b, invb, ctx)
   addreturn!(b, invb, ctx)
@@ -98,7 +98,7 @@ function invert!(b::Block, invb::Block, ctx::PIContext, knownvars::Set{Variable}
 end
 
 "Undo each operation statement `%a = f(%x, %y, %z)` in `b`, add to `invb`"
-function reversestatements!(b::Block, invb::Block, ctx::PIContext, knownvars::Set{Variable})
+function reversestatements!(b::Block, invb::Block, ctx::PIContext, knownvars::Dict{Variable, Any})
   for lhs in reverse(keys(b))
     @show knownvars
     @show stmt = b[lhs]
@@ -151,7 +151,7 @@ function getjoin!(v, b, ctx)
   end
 end
 
-function reversestatementssimple!(b::Block, invb::Block, ctx::PIContext, knownvars::Set{Variable})
+function reversestatementssimple!(b::Block, invb::Block, ctx::PIContext, knownvars::Dict{Variable, Any})
   i(x) = x.i
   val(x) = x.val
   
@@ -164,10 +164,14 @@ function reversestatementssimple!(b::Block, invb::Block, ctx::PIContext, knownva
     # We know the fwd input and any constants
     knownaxes = Axes{i.(filter(a -> a.i == 1 || !isvar(a.val), saxes(s)))...}
 
-    @assert !isempty(ctx.fwd2inv[(s.var, invb.id)])
-
+    # @assert !isempty(ctx.fwd2inv[(s.var, invb.id)])
+    @assert haskey(knownvars, s.var) || !isempty(ctx.fwd2inv[(s.var, invb.id)])
+    if isvar(knownvars[s.var])
+      arg = getjoin!(s.var, invb, ctx) # zt : does this handle multiple merges, correctly?
+    else
+      arg = knownvars[s.var]
+    end
     consts = val.(filter(a -> !isvar(a.val), saxes(s)))
-    arg = getjoin!(s.var, invb, ctx) # zt : does this handle multiple merges, correctly?
     args = [arg; consts] # zt: rename args to inverse
 
     # Location
@@ -182,6 +186,9 @@ function reversestatementssimple!(b::Block, invb::Block, ctx::PIContext, knownva
     for (i, v) in enumerate(stmtvars_)
       v_ = push!(invb, xcall(Core, :getfield, var, i))
       add!(ctx.fwd2inv, v, invb.id, v_)
+      # add new known vars so next iteration
+      # knownvars has full set of known variables
+      updateknown!(knownvars, v, v)
     end
   end
   invb
@@ -212,32 +219,33 @@ function addbranches!(b, invb::Block, ctx)
     # This needs to be fwd to inverse in this block
     # display(ctx.fwd2inv)
     for fwdarg in arguments(b)
-      k = (fwdarg, invb.id)
-      zoww = ctx.fwd2inv[k]
-      if length(zoww) == 1
-        push!(invargs, first(zoww))
-      else
-        @assert false
-      end
+      mergedvar = getjoin!(fwdarg, invb, ctx)
+      push!(invargs, mergedvar)
     end
     IRTools.branch!(invb, destinvb, invargs...; unless = condition)
   end
+end
+
+#dm: we might not want to update the val if one already exists?
+#dm: how do we choose? is this possible?
+function updateknown!(known, var, val)
+  known[var] = val
 end
 
 """
 When entering `block` at branchpoint `brid`, which variables are known?
 """
 function knownvars(block, brid::BranchId)
-  known_ = Set{Variable}()
+  known_ = Dict{Variable, Any}()
   # Go in reverse order from branch upwards
   # Because we know all the conditions above (and including)
   # the branch point
   for i = brid:-1:1
     br = IRTools.branches(block)[i]
     for a in br.args
-      isvar(a) && push!(known_, a) # zt - is this correct? should we know these?
+      isvar(a) && updateknown!(known_, a, a)
     end
-    isvar(br.condition) && push!(known_, br.condition)
+    isvar(br.condition) && updateknown!(known_, br.condition, i != brid)
   end
   known_
 end
