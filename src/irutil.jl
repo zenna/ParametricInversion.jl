@@ -2,7 +2,7 @@ const BlockId = Int
 const BranchId = Int
 
 # "Mapping from variable to set of variables it corresponds to in inverse"
-# d[(v1, id) = v2] means that v1 in ir corresponds to v2 on invblock id
+# d[(v1, id) = Set(v2)] means that v1 in ir corresponds to v2 on the invblock id
 const VarMap = Dict{Tuple{Variable, BlockId}, Set{Variable}}
 
 # A Branch on a Block -- need this because branches on different blocks share same id

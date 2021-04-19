@@ -314,7 +314,11 @@ x, y, z = invertapply(f, Tuple{Float64, Float64, Float64}, 2.3, rand(3))
 end
 
 # zt: change this to choose(θ, loc, t::Type{T}, target, known)
-# zt: invertapply(f, t::Type{Tuple}, arg, φ) = choose(...)
+# zt:
+
+## Inversiom from here on
+
+invertapply(f, t::Type{Tuple}, arg, θ) = choose(f, t, Axes{2:length(t)...}, Z)
 
 function invertapply(f, types::NTuple{N, DataType}, arg, φ) where N
   invertapply(f, Base.to_tuple_type(types), arg, φ)
