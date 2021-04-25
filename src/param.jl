@@ -19,6 +19,6 @@ struct Thetas
   path::Array{Int64}
 end
 
-newthetas() = Thetas{[],[]}
+newthetas() = Thetas([],[])
 
 updatepath(thetas::Thetas, bid::BlockId) = push!(thetas.path, bid)

@@ -97,34 +97,34 @@ function invert!(b::Block, invb::Block, ctx::PIContext, knownvars::Dict{Variable
   invb
 end
 
-"Undo each operation statement `%a = f(%x, %y, %z)` in `b`, add to `invb`"
-function reversestatements!(b::Block, invb::Block, ctx::PIContext, knownvars::Dict{Variable, Any})
-  for lhs in reverse(keys(b))
-    @show knownvars
-    @show stmt = b[lhs]
-    @show stmtvars_ = stmtvars(stmt)
-    @show unknownvars = setdiff(stmtvars_, knownvars)
-    @show axes = [stmtvars_; lhs]
-    f = stmt.expr.args[1]
+# "Undo each operation statement `%a = f(%x, %y, %z)` in `b`, add to `invb`"
+# function reversestatements!(b::Block, invb::Block, ctx::PIContext, knownvars::Dict{Variable, Any})
+#   for lhs in reverse(keys(b))
+#     @show knownvars
+#     @show stmt = b[lhs]
+#     @show stmtvars_ = stmtvars(stmt)
+#     @show unknownvars = setdiff(stmtvars_, knownvars)
+#     @show axes = [stmtvars_; lhs]
+#     f = stmt.expr.args[1]
     
-    @show axesids = [i for (i, axis) in enumerate(axes) if axis in unknownvars]
-    want = Axes{axesids...}
-    @show atypes = stmtargtypes(stmt, ctx.vartypes)
-    # getthething(stmt, axesids)
-    inv_stmt = xcall(ParametricInversion, :choose, f, atypes, want, ctx.paramarg)
-    union!(knownvars, unknownvars)
-    var = push!(invb, inv_stmt)
+#     @show axesids = [i for (i, axis) in enumerate(axes) if axis in unknownvars]
+#     want = Axes{axesids...}
+#     @show atypes = stmtargtypes(stmt, ctx.vartypes)
+#     # getthething(stmt, axesids)
+#     inv_stmt = xcall(ParametricInversion, :choose, f, atypes, want, ctx.paramarg)
+#     union!(knownvars, unknownvars)
+#     var = push!(invb, inv_stmt)
 
-    # add!(ctx.fwd2inv, lhs, invb.id, )
+#     # add!(ctx.fwd2inv, lhs, invb.id, )
 
-    ## So ignoring the constants,
-    ## Let's assume for the minute that we want all teh parameters
-    ## Wanted vars is everything that's not constant
-    ## 
-    println("\n")
-  end
-  invb
-end
+#     ## So ignoring the constants,
+#     ## Let's assume for the minute that we want all teh parameters
+#     ## Wanted vars is everything that's not constant
+#     ## 
+#     # println("\n")
+#   end
+#   invb
+# end
 
 "zt: fixme0"
 function saxes(s)

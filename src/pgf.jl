@@ -13,7 +13,7 @@ These parameters can be used for learning.
 """
 function inverseparameters end
 function choose(ϴ, ::typeof(+), ::Int2, ::Type{TZ}, ::Type{AB}, a, b)
-  ϴ.stack.push!(b)
+  push!(ϴ.stack, (b,))
   return a+b
 end
 
@@ -87,7 +87,7 @@ function editbranches!(b::Block, pgfb::Block, ctx::PgfContext)
       IRTools.branch!(pgfb, 0, ctx.thetavar)
       continue
     end
-    println("branch: ", br)
+    # println("branch: ", br)
     dest = ctx.fwd2pgf_block[br.block]
     pgfargs = map((arg)-> if isvar(arg) ctx.fwd2pgf[arg] else arg end, br.args)
     if br.condition === nothing
@@ -112,20 +112,20 @@ function pgfstatementsimple!(b::Block, pgfb::Block, ctx::PgfContext)
   
   methodid_ = methodid(ctx.ir)
 
-  println("pgfstatementsimple!", b.id, pgfb.id)
+  # println("pgfstatementsimple!", b.id, pgfb.id)
 
   stmt = xcall(PI, :updatepath, ctx.thetavar, b.id)
   _ = push!(pgfb, stmt)
 
   for s in statements(b)
-    println("stmt:", s)
+    # println("stmt:", s)
     loc = Loc(methodid_, s.var)
     targetaxes = TZ;
     args = map((arg) -> if isvar(arg) ctx.fwd2pgf[arg] else arg end, s.stmt.expr.args[2:end])
     @assert(length(args) == length(s.stmt.expr.args[2:end]))
-    println("updated args: ", args)
+    # println("updated args: ", args)
     knownaxes = Axes{[i for i in 3:3+length(args)-1]...}
-    println("knownaxes ", knownaxes)
+    # println("knownaxes ", knownaxes)
 
     stmt = xcall(PI, :choose, ctx.thetavar, loc, head(s.stmt), stmtargtypes(s.stmt, ctx.vartypes),
                      targetaxes, knownaxes, args...)
@@ -170,6 +170,9 @@ makePGFir(f::Function, types::NTuple{N, DataType}) where {N} =
 
 function pgfapplytransform(f::Type{F}, t::Type{T}) where {F, T}
   pgfir = makePGFir(f, t) |> IRTools.renumber
+  Core.print("ok")
+  Core.print(pgfir)
+  Core.print("done!")
 
   # Finalize
   # zt - I wrote this (I think) but I'm not sure what they do?

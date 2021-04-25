@@ -1,15 +1,15 @@
 using ParametricInversion
 using IRTools
 
-function f(x)
-  if x > 100
-    x = x * x
-  else
-    y = x + 1
-    x = x * y
-  end
-  x
-end
+# function f(x)
+#   if x > 100
+#     x = x * x
+#   else
+#     y = x + 1
+#     x = x * y
+#   end
+#   x
+# end
 
 function simple(x)
   x+1
@@ -26,3 +26,6 @@ end
 # println(pgf(typeof(simple), 3))
 
 println(pgfapply(simple, (Int64,), 3))
+ir = ParametricInversion.makePGFir(typeof(simple), Tuple{Int})
+f = IRTools.func(ir)
+f(nothing,3)
