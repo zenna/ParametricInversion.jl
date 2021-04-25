@@ -194,7 +194,9 @@ function reversestatementssimple!(b::Block, invb::Block, ctx::PIContext, knownva
   invb
 end
 
-function choosebranch end 
+function choosebranch(parentbids, thetas::Thetas)
+  pop!(thetas.stack)
+end
 
 # Add branches to invb from each block to its predecessors (in forward)
 function addbranches!(b, invb::Block, ctx)
@@ -285,7 +287,7 @@ function invertapplytransform(f::Type{F}, t::Type{T}) where {F, T}
   # Finalize
   # zt - I wrote this (I think) but I'm not sure what they do?
   dummy() = return
-  argnames_ = [Symbol("#self#"), :f, :t, :arg, :φ]
+  argnames_ = [Symbol("#self#"), :f, :t, :arg, :θ]
   ci = code_lowered(dummy, Tuple{})[1]
   ci.slotnames = [argnames_...]
   return update!(ci, invir)
@@ -298,18 +300,18 @@ end
 # end
 
 # Inversion is a special case of choose -- Want the input, have output
-# invertapply(f, t, arg, φ) = choose(θ, loc, f, inputaxes(t), Z)
+# invertapply(f, t, arg, θ) = choose(θ, loc, f, inputaxes(t), Z)
 # todo What about loc?
 
 """
-`invertapply(f, t::Type{T}, arg, φ)`
+`invertapply(f, t::Type{T}, arg, θ)`
 
-Parametric inverse application of method `f(::t...)` to `args` with parameters `φ`
+Parametric inverse application of method `f(::t...)` to `args` with parameters `θ`
 # Inputs:
 `f` - function to invert
 `t` - Tuple of types which determines method of `f` to invert
 `arg` - Input to inverse method
-`φ` - Parameter values
+`θ` - Parameter values
 
 ```
 f(x, y, z) = x * y + z
@@ -317,13 +319,17 @@ x, y, z = invertapply(f, Tuple{Float64, Float64, Float64}, 2.3, rand(3))
 @assert f(x, y, z) == 2.3
 ```
 """
-@generated function invertapply(f, t::Type{T}, arg, φ) where T
+@generated function invertapply(f, t::Type{T}, arg, θ) where T
   return invertapplytransform(f, T)
 end
 
 # zt: change this to choose(θ, loc, t::Type{T}, target, known)
-# zt: invertapply(f, t::Type{Tuple}, arg, φ) = choose(...)
+# zt: invertapply(f, t::Type{Tuple}, arg, θ) = choose(...)
 
-function invertapply(f, types::NTuple{N, DataType}, arg, φ) where N
-  invertapply(f, Base.to_tuple_type(types), arg, φ)
+function invertapply(f, types::NTuple{N, DataType}, arg, θ) where N
+  invertapply(f, Base.to_tuple_type(types), arg, θ)
+end
+
+function choose(ϴ, loc, f, types::NTuple{N, DataType}, knownaxes, want::Axes{1,}, arg) where N
+  invertapply(f, Base.to_tuple_type(types), arg, ϴ)
 end

@@ -19,18 +19,18 @@ using .Util
 include("irutil.jl")
 include("address.jl")
 
-include("cfg.jl")
-include("duplify.jl")
-include("invert.jl")
-include("cycle.jl")
-
 include("param.jl")
 include("var.jl")
+
+include("cfg.jl")
+include("duplify.jl")
+include("choose.jl")
+include("invert.jl")
+include("cycle.jl")
 
 include("primitives.jl")
 include("passes.jl")
 include("traits.jl")
-include("choose.jl")
 include("pgf.jl")
 
 

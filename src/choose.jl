@@ -3,16 +3,18 @@ export choose
 "Axes refers to a subset of the axes (aka dimension, column, attributes) of relation"
 const Axes = Tuple
 
-const Z = Axes{1,}
-const ZA = Axes{1,2}
-const ZB = Axes{1,3}
-const ZC = Axes{1,4}
-const A = Axes{2}
-const B = Axes{3}
-const C = Axes{4}
-const AB = Axes{2, 3}
-const BC = Axes{3, 4}
-const ABC = Axes{2, 3, 4}
+const T = Axes{1,}
+const Z = Axes{2,}
+const TZ = Axes{1,2}
+const ZA = Axes{2,3}
+const ZB = Axes{2,4}
+const ZC = Axes{2,5}
+const A = Axes{3}
+const B = Axes{4}
+const C = Axes{5}
+const AB = Axes{3, 4}
+const BC = Axes{4, 5}
+const ABC = Axes{3, 4, 5}
 
 inputaxes(t::Tuple{T}) where T <: Tuple = Axes{2:2+length(T)...}
 

@@ -1,5 +1,5 @@
 # Shortcuts for now
-export reals, bools, integers, unit
+export reals, bools, integers, unit, Thetas
 
 bools(θ) = unit(θ) > 0.5
 bound(θ, a, b, c) = unit(θ, T) * b - a + a
@@ -13,3 +13,12 @@ const ℤ = integers
 function choose(branches, θ)
   return 1
 end
+
+struct Thetas
+  stack::Array{Tuple}
+  path::Array{Int64}
+end
+
+newthetas() = Thetas{[],[]}
+
+updatepath(thetas::Thetas, bid::BlockId) = push!(thetas.path, bid)
