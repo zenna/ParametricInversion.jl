@@ -129,7 +129,7 @@ end
 "zt: fixme0"
 function saxes(s)
   coords = [s.var; s.stmt.expr.args[2:end]]
-  [(i = i, val = v) for (i, v) in enumerate(coords)]
+  [(i = i+1, val = v) for (i, v) in enumerate(coords)]
 end
 
 function getjoin!(v, b, ctx)
@@ -160,9 +160,9 @@ function reversestatementssimple!(b::Block, invb::Block, ctx::PIContext, knownva
   # In reverse order, for each statement 
   for s in reverse(statements(b))
     # axes of all outputs that are variables
-    targetaxes = Axes{i.(filter(a -> a.i != 1 && isvar(a.val), saxes(s)))...}
+    targetaxes = Axes{i.(filter(a -> a.i != 2 && isvar(a.val), saxes(s)))...}
     # We know the fwd input and any constants
-    knownaxes = Axes{i.(filter(a -> a.i == 1 || !isvar(a.val), saxes(s)))...}
+    knownaxes = Axes{i.(filter(a -> a.i == 2 || !isvar(a.val), saxes(s)))...}
 
     # @assert !isempty(ctx.fwd2inv[(s.var, invb.id)])
     @assert haskey(knownvars, s.var) || !isempty(ctx.fwd2inv[(s.var, invb.id)])
@@ -270,7 +270,7 @@ end
 function invertir(f::Type{F}, t::Type{T}) where {F, T}
   fwdir = Mjolnir.trace(Mjolnir.Defaults(), F, t.parameters...)
   IRTools.explicitbranch!(fwdir)  # IR-transforms assumes no implicit branching
-  fwdir |> IRTools.expand! |> IRTools.explicitbranch!
+  fwdir |> IRTools.explicitbranch!
   invir = invert(fwdir)
 end
 

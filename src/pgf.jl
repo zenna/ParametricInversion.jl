@@ -12,9 +12,19 @@ Produces parameters `θ` such that:
 These parameters can be used for learning.
 """
 function inverseparameters end
-function choose(ϴ, ::typeof(+), ::Int2, ::Type{TZ}, ::Type{AB}, a, b)
+function choose(ϴ, loc, ::typeof(+), ::Int2, ::Type{TZ}, ::Type{AB}, a, b)
   push!(ϴ.stack, (b,))
   return a+b
+end
+
+function choose(ϴ, loc, ::typeof(*), ::Int2, ::Type{TZ}, ::Type{AB}, a, b)
+  push!(ϴ.stack, (b,))
+  return a*b
+end
+
+function choose(ϴ, loc, ::typeof(>), ::Int2, ::Type{TZ}, ::Type{AB}, a, b)
+  push!(ϴ.stack, (a, b))
+  return a > b
 end
 
 struct PgfContext
@@ -160,7 +170,8 @@ end
 function makePGFir(f::Type{F}, t::Type{T}) where {F, T}
   fwdir = Mjolnir.trace(Mjolnir.Defaults(), F, t.parameters...)
   IRTools.explicitbranch!(fwdir)  # IR-transforms assumes no implicit branching
-  fwdir |> IRTools.expand! |> IRTools.explicitbranch!
+  # fwdir |> IRTools.expand!
+  println("mjlnir ir:", fwdir)
   pgfir = pgf(fwdir)
 end
 

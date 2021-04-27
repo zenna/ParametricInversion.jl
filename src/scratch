@@ -1,0 +1,51 @@
+1: (%1 :: const(f), %2 :: Int64)
+  %3 = (<=)(0, %2) :: Bool
+  br 3 (0) unless %3
+  br 2 (0, 0)
+2: (%4 :: Int64, %5 :: Int64)
+  %6 = (+)(%4, %5) :: Int64
+  %7 = (+)(%5, 1) :: Int64
+  %8 = (<=)(%7, %2) :: Bool
+  br 3 (%6) unless %8
+  br 2 (%6, %7)
+3: (%9 :: Int64)
+  return %9
+
+
+1: (%10 :: output, %11 :: phi)
+  %12 = choosebranch(phi)
+  %13 = !=(%12, 4)
+  br 4 (%10) unless %13
+
+2 (%20 :: Bool): 
+  %21 = invert(<=, 0, %20)
+  return %20
+
+3 (%30 :: Bool, %31 :: Int64):
+  %32, %33 = invert(<=, %30)
+  %34 = invert(+, %32, 1)
+  %35 = invert(+, %31, %34)
+  
+  %36 = choosebranch(phi)
+  %37 = !=(%36, 3)
+  br 3 (%30 = true, %35) unless %37
+  br 2 (%20 = true)
+
+4 (%40 :: Int64):
+  %41 = choosebranch(phi)
+  %42 = !=(%41, 2)
+  br 3 unless 42
+  br 2 (%20 = false)
+
+
+
+
+function f(x)
+  i = 0
+  result = 0
+  while i <= x
+    result += i
+    i += 1
+  end
+  return result
+end

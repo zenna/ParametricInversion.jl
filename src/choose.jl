@@ -16,7 +16,7 @@ const AB = Axes{3, 4}
 const BC = Axes{4, 5}
 const ABC = Axes{3, 4, 5}
 
-inputaxes(t::Tuple{T}) where T <: Tuple = Axes{2:2+length(T)...}
+inputaxes(t::Tuple{T}) where T <: Tuple = Axes{3:3+length(T)...}
 
 "Indicates we have concrete values for some subset of the relation"
 struct Concrete{T<:Axes, V<:Tuple}
@@ -59,28 +59,71 @@ const Floats2 = Type{Tuple{Float64, Float64}}
 # # Substraction is simply a reoirentation of addition
 # choose(::typeof(-), t::Int2, ::XZ, (z)::Z, θ) = (z - θ, θ)
 
+# # +, - relation
+# choose(θ, ::typeof(+), ::Type{NTuple{2, <:Real}}, ::Type{A}, ::Type{ZB}, z, b) = (z - b,)
+# choose(θ, ::typeof(+), ::Type{<:NTuple{2, <:Real}}, ::Type{AB}, ::Type{Z}, z) = 
+#   let θ_ = ℝ(θ) ; (z - θ_, θ_) end
+
+
+# choose(θ, ::typeof(+), ::Type{Tuple{Int, Int}}, ::Type{AB}, ::Type{Z}, z) = 
+#   let θ_ = ℝ(θ) ; (z - θ_, θ_) end
+
+# # *, / relation
+# choose(θ, ::typeof(*), ::Floats2, ::Type{B}, ::Type{ZA}, z, a) = 
+#   (z / a,)
+
+# function choose(θ, ::typeof(*), ::Floats2, ::Type{AB}, ::Type{Z}, z)
+#   b = 𝔹(θ)
+#   v = ℝ(θ)
+#   b ? (z/v, v) : (v, z/v)
+# end
+
+# choose(θ, ::typeof(/), ::Floats2, ::Type{AB}, ::Type{Z}, z) =
+#   let r = ℝ(θ)
+#     (z * r, r)
+#   end
+
+# choose(θ, loc::Loc, args...) = choose(project(θ, loc), args...)
+
+
+
+
+
+### chooses that match pgfs:
 # +, - relation
-choose(θ, ::typeof(+), ::Type{NTuple{2, <:Real}}, ::Type{A}, ::Type{ZB}, z, b) = (z - b,)
-choose(θ, ::typeof(+), ::Type{<:NTuple{2, <:Real}}, ::Type{AB}, ::Type{Z}, z) = 
-  let θ_ = ℝ(θ) ; (z - θ_, θ_) end
+# choose(θ, ::typeof(+), ::Type{NTuple{2, <:Real}}, ::Type{A}, ::Type{ZB}, z, b) = (z - b,)
+# choose(θ, ::typeof(+), ::Type{<:NTuple{2, <:Real}}, ::Type{AB}, ::Type{Z}, z) = 
+#   let θ_ = ℝ(θ) ; (z - θ_, θ_) end
 
 
-choose(θ, ::typeof(+), ::Type{Tuple{Int, Int}}, ::Type{AB}, ::Type{Z}, z) = 
-  let θ_ = ℝ(θ) ; (z - θ_, θ_) end
+choose(ϴ, loc, ::typeof(+), ::Int2, ::Type{AB}, ::Type{Z}, z) = 
+  let b = ϴ.stack.pop()[1]; (z-b, b) end
 
-# *, / relation
-choose(θ, ::typeof(*), ::Floats2, ::Type{B}, ::Type{ZA}, z, a) = 
-  (z / a,)
 
-function choose(θ, ::typeof(*), ::Floats2, ::Type{AB}, ::Type{Z}, z)
-  b = 𝔹(θ)
-  v = ℝ(θ)
-  b ? (z/v, v) : (v, z/v)
+choose(ϴ::Thetas, loc, ::typeof(+), ::Int2, ::Type{B}, ::Type{ZA}, z, a) = 
+  let b = ϴ.stack.pop()[1]; (z-a,) end
+
+function choose(ϴ::Thetas, loc, ::typeof(+), ::Int2, ::Type{A}, ::Type{ZB}, z, b) 
+  println("choose ", ϴ)
+  bp = ϴ.stack
+  # Core.println("bp: ", bp)
+  (z-b,) 
 end
 
-choose(θ, ::typeof(/), ::Floats2, ::Type{AB}, ::Type{Z}, z) =
-  let r = ℝ(θ)
-    (z * r, r)
-  end
+# # *, / relation
+# choose(θ, ::typeof(*), ::Floats2, ::Type{B}, ::Type{ZA}, z, a) = 
+#   (z / a,)
 
-choose(θ, loc::Loc, args...) = choose(project(θ, loc), args...)
+# function choose(θ, ::typeof(*), ::Floats2, ::Type{AB}, ::Type{Z}, z)
+#   b = 𝔹(θ)
+#   v = ℝ(θ)
+#   b ? (z/v, v) : (v, z/v)
+# end
+
+# choose(θ, ::typeof(/), ::Floats2, ::Type{AB}, ::Type{Z}, z) =
+#   let r = ℝ(θ)
+#     (z * r, r)
+#   end
+
+choose(ϴ, loc, ::typeof(>), ::Int2, ::Type{A}, ::Type{ZB}, z, b) = 
+  let a = ϴ.stack.pop(); (a,) end

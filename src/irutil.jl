@@ -38,7 +38,9 @@ end
 
 "Argument types of statement `stmt` according to vartypes `vtypes`"
 function stmtargtypes(stmt::Statement, vtypes)
+  println("stmt: ", stmt)
   t = map(stmt.expr.args[2:end]) do arg
+    println("arg: ", arg)
     if isvar(arg)
       vtypes[arg]
     else

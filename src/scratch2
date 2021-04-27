@@ -1,0 +1,8 @@
+using ForwardKinematics
+using Mjolnir
+using ParametricInversion
+ir = @trace ForwardKinematics.forward_kinematics(::Tuple{Float64, Float64, Float64}, (1.0,2.0, 3.0), 3)
+ParametricInversion.invertapplyIR(ir)
+
+f(x) = x[1]
+ParametricInversion.invertapply(f, Tuple{Tuple{Float64, Float64, Float64}}, 3, rand(2))
