@@ -119,7 +119,7 @@ $$
 \text{choose}_{\varphi, \alpha} = \text{project}_\alpha \circ \text{select}_\varphi \circ \text{extend} =  \pi \circ \sigma \circ \epsilon
 $$
 
-## Programs As Relations
+## Programs as Relations
 
 In reality, these relations are not represented explicitly as either sets or as tables.  Rather, they are represented as programs.
 
@@ -127,8 +127,7 @@ Let's start with a simple program.
 
 ```julia
 function f(a, b)
-  y = a * b
-  z = p + x
+  z = a * b + a
   return z
 end
 ```
@@ -137,38 +136,33 @@ This program is a __straight-line__ program in the sense that it uses no loops o
 In addition it has no side effects, and hence it is a __functional__ program.
 
 There are many different questions we might want to ask:
-- Given values for $a$ and $y$, what is the value of $z$
+- Given values for $a$ and $b$, what is the value of $z$
 - Given a value for $z$, provide a value for $a$ and $b$
 - Given a value for $a$, provide a value for $b$ and $z$
 - Given a value for $b$, provide a value for $a$ and $z$
 
-To answer these questions, we want to follow the approach layed about above.  That is, ...
-Unfortuantely, is not represented as an explicit enumerable set or table, not least be because R is infinite, and could not be represented explicitly.
+To answer these questions, we want to follow the approach layed about above.  Unfortuantely, is not represented as an explicit enumerable set or table, not least be because R is infinite, and could not be represented explicitly.
 
 ### Ordering
 
-Given a program, there are many ways in which we can reorder these executions.
+The approach we will take is to __reoder__ f.
 
-Suppose we have the forward function:
+First, let's see the SSA IR form of `f`:
 
 ```julia
-function f(a, b)
-  v1 = a * b
-  v2 = a + v1
-end
-```
-
-In SSA IR, this is:
-
-```
-julia> @code_ir g(1,2)
+julia> @code_ir g(1, 2)
 1: (%1, %2, %3)
   %4 = %2 * %3
   %5 = %4 + %2
   return %5
 ```
 
+Here `%2` corresponds to `a`, `%3` to `b`, and `%5` to `z`.  `%4` corresponds to the intermediate unnamed value `a * b`.
+
+
+
 In graphical form, this is:
+
 
 The basic idea behind parametric relational programming is that there is a great deal of flexibility in the order in which we execute statements.
 In this example, we know the value of the output $z$ and we want the inputs $a$ and $b$.
@@ -192,7 +186,3 @@ Q: Should we be able to reorient to internal values?
 
 -- Can assume we start with some knowns, which are inputs.
 -- What is a reorientation?  It
-
-# Open Questions
-- What is an ordering
-- 
