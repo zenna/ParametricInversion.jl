@@ -14,11 +14,11 @@ function choose(branches, θ)
   return 1
 end
 
-struct Thetas
-  stack::Array{Tuple}
-  path::Array{Int64}
+struct Thetas{A, B}
+  stack::A
+  path::B
 end
 
-newthetas() = Thetas([],[])
+newthetas() = Thetas(Tuple{Int}[], Int[])
 
 updatepath(thetas::Thetas, bid::BlockId) = push!(thetas.path, bid)
