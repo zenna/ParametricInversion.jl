@@ -23,6 +23,10 @@ function choose(ϴ, loc, ::typeof(*), ::Int2, ::Type{TZ}, ::Type{AB}, a, b)
 end
 
 function choose(ϴ, loc, ::typeof(>), ::Int2, ::Type{TZ}, ::Type{AB}, a, b)
+  println("choose >")
+  println(ϴ)
+  println(ϴ.stack)
+  println((a,b))
   push!(ϴ.stack, (a, b))
   return a > b
 end

@@ -97,16 +97,18 @@ const Floats2 = Type{Tuple{Float64, Float64}}
 
 
 choose(ϴ, loc, ::typeof(+), ::Int2, ::Type{AB}, ::Type{Z}, z) = 
-  let b = ϴ.stack.pop()[1]; (z-b, b) end
+  let b = pop!(ϴ.stack)[1]; (z-b, b) end
 
 
 choose(ϴ::Thetas, loc, ::typeof(+), ::Int2, ::Type{B}, ::Type{ZA}, z, a) = 
-  let b = ϴ.stack.pop()[1]; (z-a,) end
+  let b = pop!(ϴ.stack)[1]; (z-a,) end
 
-function choose(ϴ::Thetas, loc, ::typeof(+), ::Int2, ::Type{A}, ::Type{ZB}, z, b) 
+function choose(ϴ::Thetas, loc, ::typeof(+), ::Int2, ::Type{A}, ::Type{ZB}, z::Int, b::Int) 
   println("choose ", ϴ)
-  bp = ϴ.stack
+  bp = pop!(ϴ.stack)[1]
+  # println(typeof(bp))
   # Core.println("bp: ", bp)
+  # @assert(bp == b)
   (z-b,) 
 end
 

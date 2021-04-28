@@ -72,7 +72,7 @@ uuid = "c8ffd9c3-330d-5841-b78e-0817d7145fa1"
 deps = ["IRTools", "MacroTools"]
 git-tree-sha1 = "9b169b995f3c8fefd48fe47d9df27bad1a43589f"
 repo-rev = "raytrace"
-repo-url = "/Users/David/Documents/MEng/thesis/Mjolnir.jl"
+repo-url = "https://github.com/dmorejon/Mjolnir.jl"
 uuid = "1154507a-7ac2-44fe-9f15-34617bca9db5"
 version = "0.2.1"
 
