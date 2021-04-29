@@ -20,13 +20,8 @@ function transform(mix::PgfMix, src, sig)
     b = CodeInfoTools.Builder(src)
     forward = sig[2].instance
     argtypes = sig[3 : end]
-    println("fwd, argtypes:")
-    println(forward)
-    println(argtypes)
     pgfir = ParametricInversion.makePGFir(forward, argtypes)
     ci = IRTools.Inner.build_codeinfo(pgfir)
-
-    println("Resultant IR for $(sig):")
     return ci
 end
 
@@ -37,7 +32,7 @@ end
 # This is just a fallback stub. We intercept this in inference.
 invert(f, types, invarg, thetas) = nothing
 
-@ctx (false, false, false) struct InvMix  end
+@ctx (true, true, true) struct InvMix  end
 
 # Allow the transform on our Target module.
 allow(ctx::InvMix, fn::typeof(invert), args...) = true
@@ -50,16 +45,22 @@ function transform(mix::InvMix, src, sig)
     b = CodeInfoTools.Builder(src)
     forward = sig[2].instance
     argtypes = sig[3:end-2]
-    println("generating invir")
-    println("fwd, argtypes:")
-    println(forward)
-    println(argtypes)
     invir = ParametricInversion.invertir(forward, argtypes)
-    println("done w invir: ", invir)
-    ci = IRTools.Inner.build_codeinfo(invir)
+    #ci = IRTools.Inner.build_codeinfo(invir)
+    IRTools.Inner.update!(src, invir)
+    src.inlineable = false
+    display(src)
+    return src
+end
 
-    println("Resultant IR for $(sig):")
-    return ci
+function preopt!(mix::InvMix, ir)
+    display(ir)
+    return ir
+end
+
+function postopt!(mix::InvMix, ir)
+    display(ir)
+    return ir
 end
 
 arg = 3
@@ -67,11 +68,9 @@ invarg = foo(arg)
 
 Mixtape.@load_call_interface()
 thetas = call(PgfMix(), pgf, foo, arg)
-display(thetas)
 
-Mixtape.@load_call_interface()
-args = call(InvMix(), invert, foo, Int64, invarg, thetas)
-display(args)
+args = Mixtape.jit(InvMix(), invert, Tuple{typeof(foo), Type{Int64}, typeof(invarg), typeof(thetas)})
+#display(args)
 
 # using Mixtape
 # using CodeInfoTools

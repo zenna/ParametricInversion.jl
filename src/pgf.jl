@@ -13,9 +13,9 @@ These parameters can be used for learning.
 """
 function inverseparameters end
 function choose(ϴ, loc, ::typeof(+), ::Int2, ::Type{TZ}, ::Type{AB}, a, b)
-  println("choose +")
-  println(a)
-  println(b)
+  #println("choose +")
+  #println(a)
+  #println(b)
   push!(ϴ.stack, (b,))
   return a+b
 end
@@ -26,10 +26,10 @@ function choose(ϴ, loc, ::typeof(*), ::Int2, ::Type{TZ}, ::Type{AB}, a, b)
 end
 
 function choose(ϴ, loc, ::typeof(>), ::Int2, ::Type{TZ}, ::Type{AB}, a, b)
-  println("choose >")
-  println(ϴ)
-  println(ϴ.stack)
-  println((a,b))
+  #println("choose >")
+  #println(ϴ)
+  #println(ϴ.stack)
+  #println((a,b))
   push!(ϴ.stack, (a, b))
   return a > b
 end
@@ -178,7 +178,7 @@ function makePGFir(f::Type{F}, t::Type{T}) where {F, T}
   fwdir = Mjolnir.trace(Mjolnir.Defaults(), F, t.parameters...)
   IRTools.explicitbranch!(fwdir)  # IR-transforms assumes no implicit branching
   # fwdir |> IRTools.expand!
-  println("mjlnir ir:", fwdir)
+  #println("mjlnir ir:", fwdir)
   pgfir = pgf(fwdir) |> IRTools.renumber
 end
 
