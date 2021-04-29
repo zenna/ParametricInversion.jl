@@ -43,12 +43,12 @@ end
 
 ## test choose
 
-loc = PI.Loc(3, IRTools.Inner.Variable(3))
-thetas = PI.Thetas([(1,)], [1])
-known = PI.ZB
-want = PI.A
-println("choose: ")
-println(choose(thetas, loc, +, Tuple{Int64, Int64}, want, known, 4, 1))
+# loc = PI.Loc(3, IRTools.Inner.Variable(3))
+# thetas = PI.Thetas([(1,)], [1])
+# known = PI.ZB
+# want = PI.A
+# println("choose: ")
+# println(choose(thetas, loc, +, Tuple{Int64, Int64}, want, known, 4, 1))
 
 ## testing
 args = (3,)
@@ -56,15 +56,35 @@ f = simple
 types = Tuple{Int}
 
 ir = ParametricInversion.makePGFir(typeof(f), types)
-println(ir)
+# println(ir)
 g = IRTools.func(ir)
 ϴ = g(nothing, args...)
-println("thetas: ", ϴ)
+# println("thetas: ", ϴ)
 
 invir = ParametricInversion.invertir(typeof(f), types)
+# invir = ParametricInversion.
+
+# invir = ParametricInversion.invertapplytransform(typeof(f), Tuple{Int})
+
 println(invir)
 invg = IRTools.func(invir)
 out = invg(nothing, f, types, f(args...), ϴ)
 println("output of inverse: ", out, ", pgf args: ", args)
 @assert(args == out)
 
+
+# julia> invir
+# CodeInfo(
+# 1 ─ %1 = ParametricInversion.choose(θ, ParametricInversion.Loc(0x418e99d503916ba1, %3), +, Tuple{Int64, Int64}, Tuple{3}, Tuple{2, 4}, arg, 1)
+# │   %2 = Core.getfield(%1, 1)
+# │   %3 = Base.tuple(%2)
+# └──      return %3
+# )
+
+
+function test(f, t, arg, θ)
+  a = ParametricInversion.choose(θ, ParametricInversion.Loc(0x418e99d503916ba1, IRTools.Variable(3)), +, Tuple{Int64, Int64}, Tuple{3}, Tuple{2, 4}, arg, 1)
+  b = Core.getfield(a, 1)
+  c = Base.tuple(b)
+  return c
+end

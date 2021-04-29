@@ -176,9 +176,9 @@ function reversestatementssimple!(b::Block, invb::Block, ctx::PIContext, knownva
 
     # Location
     loc = Loc(methodid_, s.var)
-
-    invstmt = xcall(PI, :choose, ctx.paramarg, loc, head(s.stmt), stmtargtypes(s.stmt, ctx.vartypes),
-                     targetaxes, knownaxes, args...)
+    MAGIC = 1
+    invstmt = xcall(PI, :choose, ctx.paramarg, MAGIC, head(s.stmt), MAGIC,
+                    MAGIC, MAGIC, args...)
     var = push!(invb, invstmt)
 
     # detuple
