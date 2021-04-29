@@ -1,0 +1,116 @@
+choose:
+choose Thetas(Tuple[(1,)], [1])
+(3,)
+tracecall!
+(typeof(simple), Int64)
+traceblocK:
+1: (%1 :: Union{}, %2 :: Union{})
+  %3 = %2 + 1 :: Union{}
+  return %3
+before cleanup:
+1: (%1 :: typeof(simple), %2 :: Int64)
+  %3 = (+)(%2, 1) :: Int64
+  return %3
+after cleanup:
+mjlnir ir:1: (%1 :: typeof(simple), %2 :: Int64)
+  %3 = (+)(%2, 1) :: Int64
+  return %3
+stmt: IRTools.Inner.Statement(:((+)(%2, 1)), Int64, 0)
+arg: %2
+arg: 1
+1: (%1, %2)
+  %4 = ParametricInversion.newthetas()
+  br 2 (%2)
+2: (%3)
+  %5 = ParametricInversion.updatepath(%4, 1)
+  %6 = ParametricInversion.choose(%4, ParametricInversion.Loc(0x2dcfe5b4dcc7edbf, %3), +, Tuple{Int64, Int64}, Tuple{1, 2}, Tuple{3, 4}, %3, 1)
+  return %4
+thetas: Thetas(Tuple[(1,)], [1])
+tracecall!
+(typeof(simple), Int64)
+traceblocK:
+1: (%1 :: Union{}, %2 :: Union{})
+  %3 = %2 + 1 :: Union{}
+  return %3
+before cleanup:
+1: (%1 :: typeof(simple), %2 :: Int64)
+  %3 = (+)(%2, 1) :: Int64
+  return %3
+after cleanup:
+stmt: IRTools.Inner.Statement(:((+)(%2, 1)), Int64, 0)
+arg: %2
+arg: 1
+1: (%1, %2, %3, %4, %5)
+  %6 = ParametricInversion.choose(%5, ParametricInversion.Loc(0x2dcfe5b4dcc7edbf, %3), +, Tuple{Int64, Int64}, Tuple{3}, Tuple{2, 4}, %4, 1)
+  %7 = Core.getfield(%6, 1)
+  %8 = Base.tuple(%7)
+  return %8
+terminate called after throwing an instance of 'std::out_of_range'
+  what():  vector::_M_range_check: __n (which is 1) >= this->size() (which is 1)
+
+signal (6): Aborted
+in expression starting at /home/mccoy/Dev/ParametricInversion.jl/src/testir.jl:67
+gsignal at /lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+abort at /lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+__verbose_terminate_handler at /workspace/srcdir/gcc-9.1.0/libstdc++-v3/libsupc++/vterminate.cc:95
+__terminate at /workspace/srcdir/gcc-9.1.0/libstdc++-v3/libsupc++/eh_terminate.cc:47
+terminate at /workspace/srcdir/gcc-9.1.0/libstdc++-v3/libsupc++/eh_terminate.cc:57
+__cxa_throw at /workspace/srcdir/gcc-9.1.0/libstdc++-v3/libsupc++/eh_throw.cc:95
+__throw_out_of_range_fmt at /workspace/srcdir/gcc-9.1.0/libstdc++-v3/src/c++11/functexcept.cc:96
+_M_range_check at /usr/include/c++/10/bits/stl_vector.h:1073 [inlined]
+at at /usr/include/c++/10/bits/stl_vector.h:1094 [inlined]
+emit_function at /home/mccoy/julia/src/codegen.cpp:6663
+jl_emit_code at /home/mccoy/julia/src/codegen.cpp:7203
+jl_emit_codeinst at /home/mccoy/julia/src/codegen.cpp:7248
+_jl_compile_codeinst at /home/mccoy/julia/src/jitlayers.cpp:124
+jl_generate_fptr at /home/mccoy/julia/src/jitlayers.cpp:352
+jl_compile_method_internal at /home/mccoy/julia/src/gf.c:1970
+jl_compile_method_internal at /home/mccoy/julia/src/gf.c:1924 [inlined]
+_jl_invoke at /home/mccoy/julia/src/gf.c:2229 [inlined]
+jl_apply_generic at /home/mccoy/julia/src/gf.c:2419
+jl_apply at /home/mccoy/julia/src/julia.h:1703 [inlined]
+do_call at /home/mccoy/julia/src/interpreter.c:115
+eval_value at /home/mccoy/julia/src/interpreter.c:204
+eval_stmt_value at /home/mccoy/julia/src/interpreter.c:155 [inlined]
+eval_body at /home/mccoy/julia/src/interpreter.c:561
+jl_interpret_toplevel_thunk at /home/mccoy/julia/src/interpreter.c:669
+jl_toplevel_eval_flex at /home/mccoy/julia/src/toplevel.c:877
+jl_toplevel_eval_flex at /home/mccoy/julia/src/toplevel.c:825
+jl_toplevel_eval_in at /home/mccoy/julia/src/toplevel.c:929
+eval at ./boot.jl:360 [inlined]
+include_string at ./loading.jl:1094
+_include at ./loading.jl:1148
+include at ./client.jl:444
+jl_apply at /home/mccoy/julia/src/julia.h:1703 [inlined]
+do_call at /home/mccoy/julia/src/interpreter.c:115
+eval_value at /home/mccoy/julia/src/interpreter.c:204
+eval_stmt_value at /home/mccoy/julia/src/interpreter.c:155 [inlined]
+eval_body at /home/mccoy/julia/src/interpreter.c:561
+jl_interpret_toplevel_thunk at /home/mccoy/julia/src/interpreter.c:669
+jl_toplevel_eval_flex at /home/mccoy/julia/src/toplevel.c:877
+jl_toplevel_eval_flex at /home/mccoy/julia/src/toplevel.c:825
+jl_toplevel_eval_in at /home/mccoy/julia/src/toplevel.c:929
+eval at ./boot.jl:360 [inlined]
+eval_user_input at /home/mccoy/julia/usr/share/julia/stdlib/v1.6/REPL/src/REPL.jl:139
+repl_backend_loop at /home/mccoy/julia/usr/share/julia/stdlib/v1.6/REPL/src/REPL.jl:200
+start_repl_backend at /home/mccoy/julia/usr/share/julia/stdlib/v1.6/REPL/src/REPL.jl:185
+#run_repl#42 at /home/mccoy/julia/usr/share/julia/stdlib/v1.6/REPL/src/REPL.jl:317
+run_repl at /home/mccoy/julia/usr/share/julia/stdlib/v1.6/REPL/src/REPL.jl:305
+#874 at ./client.jl:387
+jfptr_YY.874_33417 at /home/mccoy/julia/usr/lib/julia/sys.so (unknown line)
+jl_apply at /home/mccoy/julia/src/julia.h:1703 [inlined]
+jl_f__call_latest at /home/mccoy/julia/src/builtins.c:714
+#invokelatest#2 at ./essentials.jl:708 [inlined]
+invokelatest at ./essentials.jl:706 [inlined]
+run_main_repl at ./client.jl:372
+exec_options at ./client.jl:302
+_start at ./client.jl:485
+jfptr__start_43627 at /home/mccoy/julia/usr/lib/julia/sys.so (unknown line)
+jl_apply at /home/mccoy/julia/src/julia.h:1703 [inlined]
+true_main at /home/mccoy/julia/src/jlapi.c:560
+repl_entrypoint at /home/mccoy/julia/src/jlapi.c:702
+main at julia (unknown line)
+__libc_start_main at /lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+_start at julia (unknown line)
+Allocations: 40925853 (Pool: 40914779; Big: 11074); GC: 53
+Aborted (core dumped)
