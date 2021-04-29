@@ -105,7 +105,7 @@ choose(ϴ::Thetas, loc, ::typeof(+), ::Int2, ::Type{B}, ::Type{ZA}, z, a) =
 
 function choose(ϴ::Thetas, loc, ::typeof(+), ::Int2, ::Type{A}, ::Type{ZB}, z::Int, b::Int) 
   println("choose ", ϴ)
-  bp = pop!(ϴ.stack)[1]
+  # bp = pop!(ϴ.stack)[1]
   # println(typeof(bp))
   # Core.println("bp: ", bp)
   # @assert(bp == b)

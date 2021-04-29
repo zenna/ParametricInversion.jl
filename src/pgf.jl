@@ -13,6 +13,9 @@ These parameters can be used for learning.
 """
 function inverseparameters end
 function choose(ϴ, loc, ::typeof(+), ::Int2, ::Type{TZ}, ::Type{AB}, a, b)
+  println("choose +")
+  println(a)
+  println(b)
   push!(ϴ.stack, (b,))
   return a+b
 end
@@ -64,7 +67,7 @@ function setuppfg!(ir::IR, pgfir::IR)
   # make block 1
   pgfb = IRTools.block(pgfir, 1)
   selfarg = IRTools.argument!(pgfb; insert=false)
-  # farg = IRTools.argument!(pgfb)
+  # farg = IRTools.argument!(pgfb, insert=false)
 
   fwd2pgf = Dict{Variable, Variable}()
   vtypes = vartypes(ir)
@@ -176,7 +179,7 @@ function makePGFir(f::Type{F}, t::Type{T}) where {F, T}
   IRTools.explicitbranch!(fwdir)  # IR-transforms assumes no implicit branching
   # fwdir |> IRTools.expand!
   println("mjlnir ir:", fwdir)
-  pgfir = pgf(fwdir)
+  pgfir = pgf(fwdir) |> IRTools.renumber
 end
 
 

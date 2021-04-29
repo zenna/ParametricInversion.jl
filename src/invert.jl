@@ -271,7 +271,7 @@ function invertir(f::Type{F}, t::Type{T}) where {F, T}
   fwdir = Mjolnir.trace(Mjolnir.Defaults(), F, t.parameters...)
   IRTools.explicitbranch!(fwdir)  # IR-transforms assumes no implicit branching
   fwdir |> IRTools.explicitbranch!
-  invir = invert(fwdir)
+  invir = invert(fwdir) |> IRTools.renumber
 end
 
 invertir(f::Function, types::NTuple{N, DataType}) where {N} = 
