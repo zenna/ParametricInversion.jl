@@ -25,10 +25,11 @@ function transform(mix::PgfMix, src, sig)
     println(argtypes)
     pgfir = ParametricInversion.makePGFir(forward, argtypes)
     println("pgfir: ", pgfir)
-    # ci = IRTools.Inner.build_codeinfo(pgfir)
-    isempty(src.linetable) && 
-      push!(src.linetable, Core.LineInfoNode(@__MODULE__, src.parent, :something, 0, 0))
-    Core.Compiler.validate_code(src)
+    src = IRTools.Inner.build_codeinfo(pgfir)
+    # IRTools.Inner.update!(src, pgfir)
+    # isempty(src.linetable) && 
+    #   push!(src.linetable, Core.LineInfoNode(@__MODULE__, src.parent, :something, 0, 0))
+    # Core.Compiler.validate_code(src)
 
     println("Resultant IR for $(sig):")
     return src
@@ -37,6 +38,17 @@ end
 function foo(x)
     return x + 5
 end
+
+function complex(x)
+  if x > 100
+    x = x * x
+  else
+    y = x + 1
+    x = x * y
+  end
+  x
+end
+
 
 # This is just a fallback stub. We intercept this in inference.
 invert(f, types, invarg, thetas) = nothing
@@ -60,7 +72,7 @@ function transform(mix::InvMix, src, sig)
     println(argtypes)
     invir = ParametricInversion.invertir(forward, argtypes)
     println("done w invir: ", invir)
-    IRTools.Inner.update!(src,invir)
+    IRTools.Inner.update!(src, invir)
     isempty(src.linetable) && 
       push!(src.linetable, Core.LineInfoNode(@__MODULE__, src.parent, :something, 0, 0))
     Core.Compiler.validate_code(src)
@@ -70,45 +82,13 @@ function transform(mix::InvMix, src, sig)
 end
 
 arg = 3
-invarg = foo(arg)
+f = complex
+invarg = f(arg)
 
 Mixtape.@load_call_interface()
-thetas = call(PgfMix(), pgf, foo, arg)
+thetas = call(PgfMix(), pgf, f, arg)
 display(thetas)
 
-Mixtape.@load_call_interface()
-# args = call(InvMix(), invert, f, arg, invarg, thetas)
-# display(args)
 
-# using Mixtape
-# using CodeInfoTools
-# using CodeInfoTools: var, get_slot, walk, CodeInfo
-
-# # This is just a fallback stub. We intercept this in inference.
-# invert(ret, f, args...)  = f(args...)
-
-# @ctx (false, false, false) struct Mix  end
-
-# # Allow the transform on our Target module.
-# allow(ctx::Mix, fn::typeof(invert), args...) = true
-
-# function transform(mix::Mix, src, sig)
-#   Core.println("here")
-#   if !(sig[3] <: Function) || 
-#       sig[3] === Core.IntrinsicFunction
-#       return src
-#   end # If target is not a function, just return b.
-#   forward = sig[3].instance
-#   argtypes = sig[4 : end]
-#   forward = Mixtape._code_info(forward, Tuple{argtypes...})
-  
-#   return src
-# end
-
-# function foo(x)
-#   return x + 5
-# end
-
-# Mixtape.@load_call_interface()
-# ret = call(Mix(), invert, 10, foo, 5)
-# display(ret)
+args = call(InvMix(), invert, f, arg, invarg, thetas)
+display(args)

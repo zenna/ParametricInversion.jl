@@ -135,4 +135,9 @@ end
 #   end
 
 choose(ϴ, loc, ::typeof(>), ::Int2, ::Type{A}, ::Type{ZB}, z, b) = 
-  let (a, b) = ϴ.stack.pop(); (a,) end
+  let (a, b) = pop!(ϴ.stack); (a,) end
+
+function choose(ϴ::Thetas, loc, ::typeof(*), ::Int2, ::Type{AB}, ::Type{Z}, z)
+  b = pop!(ϴ.stack)[1]
+  (z/b, b)
+end

@@ -195,16 +195,24 @@ function reversestatementssimple!(b::Block, invb::Block, ctx::PIContext, knownva
 end
 
 function choosebranch(parentbids, thetas::Thetas)
-  pop!(thetas.stack)
+  println("choose branch")
+  println(thetas.path)
+  fwdblock = pop!(thetas.path)
+  for (b, invb) in parentbids
+    if invb == fwdblock
+      return b
+    end
+  end
 end
 
 # Add branches to invb from each block to its predecessors (in forward)
 function addbranches!(b, invb::Block, ctx)
+  println("addbranches b: ", b.id, ", invb: ", invb.id)
   branches = incomingbranches(b)
   isempty(branches) && return invb  # No incoming branches, nothing to do!
   
   # Parametrically choose among possible incoming edges
-  parentbids = tuple((ctx.fwd2inv_block[bbr] for bbr in branches)...)
+  parentbids = tuple(((bbr.block, ctx.fwd2inv_block[bbr]) for bbr in branches)...)
   chosen = push!(invb, xcall(PI, :choosebranch, parentbids, ctx.paramarg)) # zt: specialise case when there's only one parent
 
   # For each parent make a branch point
@@ -257,6 +265,7 @@ function invert(ir::IR)
   invir = IR()        # Invert IR (has one block already)
   ctx = setup!(ir, invir)
 
+  println("ctx.fwd2inv_block: ", ctx.fwd2inv_block)
   # For each block in forward create inverse block invir
   for (bbr, invbid) in ctx.fwd2inv_block
     invb = IRTools.block(invir, invbid)
