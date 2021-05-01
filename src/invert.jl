@@ -177,8 +177,8 @@ function reversestatementssimple!(b::Block, invb::Block, ctx::PIContext, knownva
     # Location
     loc = Loc(methodid_, s.var)
     MAGIC = 1
-    invstmt = xcall(PI, :choose, ctx.paramarg, MAGIC, head(s.stmt), MAGIC,
-                    MAGIC, MAGIC, args...)
+    invstmt = xcall(PI, :choose, ctx.paramarg, loc, head(s.stmt), 
+      stmtargtypes(s.stmt, ctx.vartypes), targetaxes, knownaxes, args...)
     var = push!(invb, invstmt)
 
     # detuple
@@ -270,8 +270,8 @@ end
 function invertir(f::Type{F}, t::Type{T}) where {F, T}
   fwdir = Mjolnir.trace(Mjolnir.Defaults(), F, t.parameters...)
   IRTools.explicitbranch!(fwdir)  # IR-transforms assumes no implicit branching
-  fwdir |> IRTools.explicitbranch!
-  invir = invert(fwdir)
+  println("mjolnir ir:", fwdir)
+  invir = invert(fwdir) |> IRTools.renumber
 end
 
 invertir(f::Function, types::NTuple{N, DataType}) where {N} = 

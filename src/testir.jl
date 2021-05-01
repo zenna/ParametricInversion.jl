@@ -62,7 +62,6 @@ g = IRTools.func(ir)
 # println("thetas: ", ϴ)
 
 invir = ParametricInversion.invertir(typeof(f), types)
-# invir = ParametricInversion.
 
 # invir = ParametricInversion.invertapplytransform(typeof(f), Tuple{Int})
 

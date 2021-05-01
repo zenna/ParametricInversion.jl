@@ -105,19 +105,19 @@ choose(ϴ::Thetas, loc, ::typeof(+), ::Int2, ::Type{B}, ::Type{ZA}, z, a) =
 
 function choose(ϴ::Thetas, loc, ::typeof(+), ::Int2, ::Type{A}, ::Type{ZB}, z, b) 
   println("choose ", ϴ)
-  bp = ϴ.stack
+  bp = pop!(ϴ.stack)[1]
   # Core.println("bp: ", bp)
   (z-b,) 
 end
 
-function choose(ϴ::Thetas, loc, ::typeof(+), ::Int, ::Int, ::Int, z, b) 
-  println("choose ", ϴ)
-  bp = ϴ.stack
-  b = pop!(bp)
-  @show b
-  # Core.println("bp: ", bp)
-  (z-b,) 
-end
+# function choose(ϴ::Thetas, loc, ::typeof(+), ::Int, ::Int, ::Int, z, b) 
+#   println("choose ", ϴ)
+#   bp = ϴ.stack
+#   b = pop!(bp)[1]
+#   @show b
+#   # Core.println("bp: ", bp)
+#   (z-b,) 
+# end
 
 # # *, / relation
 # choose(θ, ::typeof(*), ::Floats2, ::Type{B}, ::Type{ZA}, z, a) = 
@@ -135,4 +135,4 @@ end
 #   end
 
 choose(ϴ, loc, ::typeof(>), ::Int2, ::Type{A}, ::Type{ZB}, z, b) = 
-  let a = ϴ.stack.pop(); (a,) end
+  let (a, b) = ϴ.stack.pop(); (a,) end

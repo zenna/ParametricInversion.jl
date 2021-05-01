@@ -19,6 +19,6 @@ struct Thetas{A, B}
   path::B
 end
 
-newthetas() = Thetas(Tuple{Int}[], Int[])
+newthetas() = Thetas(Tuple[], Int[])
 
 updatepath(thetas::Thetas, bid::BlockId) = push!(thetas.path, bid)

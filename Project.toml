@@ -4,8 +4,10 @@ authors = ["Zenna Tavares", "David Morejon"]
 version = "0.1.0"
 
 [deps]
+CodeInfoTools = "bc773b8a-8374-437a-b9f2-0e9785855863"
 IRTools = "7869d1d1-7146-5819-86e3-90919afe41df"
 MacroTools = "1914dd2f-81c6-5fcd-8719-6d5c9610ff09"
+Mixtape = "17c23775-69b5-4366-8053-0c64bad4914c"
 Mjolnir = "1154507a-7ac2-44fe-9f15-34617bca9db5"
 Spec = "b8ccf107-3a88-5e0f-823b-b838c6a0f327"
 

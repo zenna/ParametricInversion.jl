@@ -172,7 +172,7 @@ function makePGFir(f::Type{F}, t::Type{T}) where {F, T}
   IRTools.explicitbranch!(fwdir)  # IR-transforms assumes no implicit branching
   # fwdir |> IRTools.expand!
   println("mjlnir ir:", fwdir)
-  pgfir = pgf(fwdir)
+  pgfir = pgf(fwdir) |> IRTools.renumber
 end
 
 
