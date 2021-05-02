@@ -2,7 +2,7 @@ using ParametricInversion
 using IRTools
 using Mixtape
 using CodeInfoTools
-using CodeInfoTools: var, get_slot, walk
+using CodeInfoTools: var, get_slot, walk, verify
 
 # This is just a fallback stub. We intercept this in inference.
 pgf(f, arg)  = nothing
@@ -49,11 +49,19 @@ function complex(x)
   x
 end
 
+function mid(x)
+  if x > 100
+    return x
+  else 
+    return x * x
+  end
+end
+
 
 # This is just a fallback stub. We intercept this in inference.
 invert(f, types, invarg, thetas) = nothing
 
-@ctx (false, false, false) struct InvMix  end
+@ctx (true, true, true) struct InvMix  end
 
 # Allow the transform on our Target module.
 allow(ctx::InvMix, fn::typeof(invert), args...) = true
@@ -78,15 +86,23 @@ function transform(mix::InvMix, src, sig)
     Core.Compiler.validate_code(src)
 
     println("Resultant IR for $(sig):")
+    println(src)
+    verify(src)
     return src
 end
 
-arg = 3
-f = complex
+
+import Mixtape: preopt!, postopt!
+preopt!(ctx::InvMix, ir) = (display(ir); ir)
+postopt!(ctx::InvMix, ir) = (display(ir); ir)
+
+arg = 101
+f = mid
 invarg = f(arg)
 
 Mixtape.@load_call_interface()
 thetas = call(PgfMix(), pgf, f, arg)
+thetas.path = [3]
 display(thetas)
 
 

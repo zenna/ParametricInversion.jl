@@ -27,7 +27,6 @@ function vartypes(ir::IR)
   vtypes = Dict{Variable, Type}()
   for b in blocks(ir)
     for (v, t) in zip(arguments(b), unwrap.(argtypes(b)))
-      println("v, ",v, ", t: ", t)
       if t <: Type{<:Any}
         # Changes from Type{Int64} to just Int64, for example
         t = t.parameters[1]  #dm: hack probably
@@ -43,10 +42,7 @@ end
 
 "Argument types of statement `stmt` according to vartypes `vtypes`"
 function stmtargtypes(stmt::Statement, vtypes)
-  println("ctx.vtypes: ", vtypes)
-  println("stmt: ", stmt)
   t = map(stmt.expr.args[2:end]) do arg
-    println("arg: ", arg)
     if isvar(arg)
       vtypes[arg]
     else

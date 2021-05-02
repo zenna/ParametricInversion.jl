@@ -157,6 +157,9 @@ function reversestatementssimple!(b::Block, invb::Block, ctx::PIContext, knownva
   
   methodid_ = methodid(ctx.ir)
 
+  debugstmt = xcall(Core, :println, "invb: ", invb.id)
+  push!(invb, debugstmt)
+
   # In reverse order, for each statement 
   for s in reverse(statements(b))
     # axes of all outputs that are variables
@@ -197,12 +200,13 @@ end
 function choosebranch(parentbids, thetas::Thetas)
   println("choose branch")
   println(thetas.path)
-  fwdblock = pop!(thetas.path)
-  for (b, invb) in parentbids
-    if invb == fwdblock
-      return b
-    end
-  end
+  pop!(thetas.path)
+  # fwdblock = pop!(thetas.path)
+  # for (b, invb) in parentbids
+  #   if invb == fwdblock
+  #     return invb
+  #   end
+  # end
 end
 
 # Add branches to invb from each block to its predecessors (in forward)

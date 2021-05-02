@@ -14,7 +14,7 @@ function choose(branches, θ)
   return 1
 end
 
-struct Thetas{A, B}
+mutable struct Thetas{A, B}
   stack::A
   path::B
 end
