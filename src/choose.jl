@@ -134,8 +134,13 @@ end
 #     (z * r, r)
 #   end
 
-choose(ϴ, loc, ::typeof(>), ::Int2, ::Type{A}, ::Type{ZB}, z, b) = 
-  let (a, b) = pop!(ϴ.stack); (a,) end
+function choose(ϴ, loc, ::typeof(>), ::Int2, ::Type{A}, ::Type{ZB}, z, b)
+  println("choose >")
+  println(ϴ)
+  val = pop!(ϴ.stack)
+  println("val: ", val)
+  val 
+end
 
 function choose(ϴ::Thetas, loc, ::typeof(*), ::Int2, ::Type{AB}, ::Type{Z}, z)
   b = pop!(ϴ.stack)[1]

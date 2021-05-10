@@ -21,4 +21,7 @@ end
 
 newthetas() = Thetas(Tuple[], Int[])
 
-updatepath(thetas::Thetas, bid::BlockId) = push!(thetas.path, bid)
+function updatepath(thetas::Thetas, bid::BlockId) 
+  println("update path: ", bid, ", thetas: ", thetas)
+  push!(thetas.path, bid)
+end

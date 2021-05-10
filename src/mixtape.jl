@@ -24,7 +24,7 @@ function transform(mix::PgfMix, src, sig)
     println(forward)
     println(argtypes)
     pgfir = ParametricInversion.makePGFir(forward, argtypes)
-    println("pgfir: ", pgfir)
+    # println("pgfir: ", pgfir)
     src = IRTools.Inner.build_codeinfo(pgfir)
     # IRTools.Inner.update!(src, pgfir)
     # isempty(src.linetable) && 
@@ -61,7 +61,7 @@ end
 # This is just a fallback stub. We intercept this in inference.
 invert(f, types, invarg, thetas) = nothing
 
-@ctx (true, true, true) struct InvMix  end
+@ctx (false, false, false) struct InvMix  end
 
 # Allow the transform on our Target module.
 allow(ctx::InvMix, fn::typeof(invert), args...) = true
@@ -79,7 +79,7 @@ function transform(mix::InvMix, src, sig)
     println(forward)
     println(argtypes)
     invir = ParametricInversion.invertir(forward, argtypes)
-    println("done w invir: ", invir)
+    # println("done w invir: ", invir)
     IRTools.Inner.update!(src, invir)
     isempty(src.linetable) && 
       push!(src.linetable, Core.LineInfoNode(@__MODULE__, src.parent, :something, 0, 0))
@@ -93,18 +93,17 @@ end
 
 
 import Mixtape: preopt!, postopt!
-preopt!(ctx::InvMix, ir) = (display(ir); ir)
-postopt!(ctx::InvMix, ir) = (display(ir); ir)
+# preopt!(ctx::InvMix, ir) = (display(ir); ir)
+# postopt!(ctx::InvMix, ir) = (display(ir); ir)
 
-arg = 101
-f = mid
+arg = 1
+f = complex
 invarg = f(arg)
 
 Mixtape.@load_call_interface()
 thetas = call(PgfMix(), pgf, f, arg)
-thetas.path = [3]
 display(thetas)
 
 
-args = call(InvMix(), invert, f, arg, invarg, thetas)
-display(args)
+outargs = call(InvMix(), invert, f, arg, invarg, thetas)
+println("output from inv: ", outargs, ", input to forward: ", arg)

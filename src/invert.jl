@@ -16,7 +16,7 @@ struct PIContext
   invir::IR
   cfg::CFG
   fwd2inv::VarMap                     # Mapping between variable names in forward and inverse
-  fwd2invmerged::Dict{Variable, Variable} # Maps variable to merged variable
+  fwd2invmerged::Dict{Tuple{Variable, BlockId}, Variable} # Maps variable to merged variable
   paramarg::Variable                  # Variable of params (todo: make this dynamicctx)
   invinarg::Variable                  # argument for input to the inverse
   vartypes::Dict{Variable, Type} 
@@ -81,8 +81,10 @@ function addreturn!(b::Block, invb::Block, ctx::PIContext)
   invretblocks = filter(bbr -> bbr.block == 1, keys(ctx.fwd2inv_block))
   # display(ctx.fwd2inv)
   if b.id == 1 # zt: this is incomplete -- it's currently not usign invretblocks
-    IRTools.return!(invb, invb)
+    # IRTools.return!(invb, invb)
+    println("fargs(b) ", fargs(b))
     arginv = [getjoin!(arg, invb, ctx) for arg in fargs(b)]
+    println("arginv: ", arginv)
     tpl = IRTools.xcall(Base, :tuple, arginv...)
     retvar = push!(invb, tpl)
     IRTools.return!(invb, retvar)
@@ -132,20 +134,21 @@ function saxes(s)
   [(i = i+1, val = v) for (i, v) in enumerate(coords)]
 end
 
-function getjoin!(v, b, ctx)
+function getjoin!(v, invb, ctx)
   # display(ctx.fwd2invmerged)
-  if v in keys(ctx.fwd2invmerged)
-    return ctx.fwd2invmerged[v]
+  k = (v, invb.id)  
+  if k in keys(ctx.fwd2invmerged)
+    return ctx.fwd2invmerged[k]
   else
     # display(ctx.fwd2inv)
-    invv = ctx.fwd2inv[(v, b.id)]
+    invv = ctx.fwd2inv[k]
     # Singleton, don't bother invdupl
     if length(invv) == 1
-      v_ = ctx.fwd2invmerged[v] = first(invv)
+      v_ = ctx.fwd2invmerged[k] = first(invv)
     else
       mergestmt = xcall(PI, :invdupl, invv...)
-      v_ = push!(b, mergestmt)
-      ctx.fwd2invmerged[v] = v_
+      v_ = push!(invb, mergestmt)
+      ctx.fwd2invmerged[k] = v_
     end
     return v_
   end
@@ -176,6 +179,7 @@ function reversestatementssimple!(b::Block, invb::Block, ctx::PIContext, knownva
     end
     consts = val.(filter(a -> !isvar(a.val), saxes(s)))
     args = [arg; consts] # zt: rename args to inverse
+    println("consts: ", consts)
 
     # Location
     loc = Loc(methodid_, s.var)
@@ -199,8 +203,9 @@ end
 
 function choosebranch(parentbids, thetas::Thetas)
   println("choose branch")
-  println(thetas.path)
-  pop!(thetas.path)
+  block = pop!(thetas.path)
+  println("chose: ", block )
+  block
   # fwdblock = pop!(thetas.path)
   # for (b, invb) in parentbids
   #   if invb == fwdblock
@@ -228,6 +233,10 @@ function addbranches!(b, invb::Block, ctx)
 
     # Leave last branch conditionlessss
     condition = i < length(branches) ? push!(invb, stmt) : nothing
+    if condition !== nothing
+      debugstmt = xcall(Core, :println, "condition: ", condition)
+      push!(invb, debugstmt)
+    end
 
     invargs = []
     # This needs to be fwd to inverse in this block
@@ -284,7 +293,7 @@ function invertir(f::Type{F}, t::Type{T}) where {F, T}
   fwdir = Mjolnir.trace(Mjolnir.Defaults(), F, t.parameters...)
   IRTools.explicitbranch!(fwdir)  # IR-transforms assumes no implicit branching
   println("mjolnir ir:", fwdir)
-  invir = invert(fwdir) |> IRTools.renumber
+  invir = invert(fwdir) # |> IRTools.renumber
 end
 
 invertir(f::Function, types::NTuple{N, DataType}) where {N} = 

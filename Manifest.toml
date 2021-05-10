@@ -133,9 +133,7 @@ uuid = "c8ffd9c3-330d-5841-b78e-0817d7145fa1"
 
 [[Mixtape]]
 deps = ["CodeInfoTools", "GPUCompiler", "LLVM", "LLVM_full_jll", "MacroTools"]
-git-tree-sha1 = "72e1706701b80bcc80027eae36478409357e2cf1"
-repo-rev = "master"
-repo-url = "https://github.com/JuliaCompilerPlugins/Mixtape.jl.git"
+path = "/Users/David/.julia/dev/Mixtape"
 uuid = "17c23775-69b5-4366-8053-0c64bad4914c"
 version = "0.2.6"
 

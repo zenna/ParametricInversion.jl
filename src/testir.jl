@@ -13,6 +13,15 @@ function complex(x)
   x
 end
 
+function mid(x)
+  if x > 100
+    return x
+  else 
+    return x * x
+  end
+end
+
+
 function simple(x)
   x+1
 end
@@ -52,24 +61,24 @@ end
 
 ## testing
 args = (3,)
-f = simple
+f = mid
 types = Tuple{Int}
 
-ir = ParametricInversion.makePGFir(typeof(f), types)
+# ir = ParametricInversion.makePGFir(typeof(f), types)
 # println(ir)
-g = IRTools.func(ir)
-ϴ = g(nothing, args...)
+# g = IRTools.func(ir)
+# ϴ = g(nothing, args...)
 # println("thetas: ", ϴ)
 
 invir = ParametricInversion.invertir(typeof(f), types)
 
 # invir = ParametricInversion.invertapplytransform(typeof(f), Tuple{Int})
-
+println("invir: ")
 println(invir)
-invg = IRTools.func(invir)
-out = invg(nothing, f, types, f(args...), ϴ)
-println("output of inverse: ", out, ", pgf args: ", args)
-@assert(args == out)
+# invg = IRTools.func(invir)
+# out = invg(nothing, f, types, f(args...), ϴ)
+# println("output of inverse: ", out, ", pgf args: ", args)
+# @assert(args == out)
 
 
 # julia> invir
