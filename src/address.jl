@@ -4,7 +4,7 @@ methodid(ir::IR) = methodid(IRTools.argtypes(ir)...)
 const MethodId = UInt
 
 "Location in trace"
-struct Loc
+struct Loc{V}
   mthdid::MethodId
-  statement::Variable
+  statement::V
 end

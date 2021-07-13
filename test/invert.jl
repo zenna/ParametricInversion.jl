@@ -1,13 +1,18 @@
 using Test
 using ParametricInversion
 using ParametricInversionTestUtils
+f(x, y, z) = x * y + z
+out = 5
+res = invertapply(f, Tuple{Float64, Float64, Float64}, out, rand(2))
+resir = invertir(f, Tuple{Float64, Float64, Float64})
+
 
 const ϵ = 0.000001
 
 @testset "simple invert" begin 
   f(x, y, z) = x * y + z
   out = 5
-  res = invertapply(f, (Float64, Float64, Float64), out, rand(2))
+  res = invertapply(f, Tuple{Float64, Float64, Float64}, out, rand(2))
   @test f(res...) ≈ out atol=ϵ
 end
 

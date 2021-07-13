@@ -70,4 +70,4 @@ fargs(b::Block) =
 head(stmt::Statement) =  stmt.expr.args[1]
 
 "Each statement of block `b` and associated Variable"
-statements(b::Block) = collect((var = k, stmt = b[k]) for k in keys(b))
+varstatements(b::Block) = collect((var = k, stmt = b[k]) for k in keys(b))

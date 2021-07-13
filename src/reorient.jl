@@ -1,7 +1,7 @@
 import Mjolnir
 using IRTools.Inner: Variable, argtypes, arguments
 
-export invert, reorientapply, cycle, cycleir, @cycle, @cycleir
+export reorientapply
 
 "Constant"
 struct PIConstant{T}
@@ -106,7 +106,7 @@ function reversestatements!(b::Block, invb::Block, ctx::PIContext, knownvars::Di
     f = stmt.expr.args[1]
     
     @show axesids = [i for (i, axis) in enumerate(axes) if axis in unknownvars]
-    want = Axes{axesids...}
+    want = Places{Tuple{axesids...}}
     @show atypes = stmtargtypes(stmt, ctx.vartypes)
     # getthething(stmt, axesids)
     inv_stmt = xcall(ParametricInversion, :choose, f, atypes, want, ctx.paramarg)
@@ -124,11 +124,12 @@ function reversestatements!(b::Block, invb::Block, ctx::PIContext, knownvars::Di
   invb
 end
 
-"zt: fixme0"
-function saxes(s)
-  coords = [s.var; s.stmt.expr.args[2:end]]
-  [(i = i, val = v) for (i, v) in enumerate(coords)]
+"For statement of the form `v1 = f(v2, v3, ..., vn)` produces [v1, v2, ..., vn]"
+function enumplaces(vs)
+  coords = [vs.var; vs.stmt.expr.args[2:end]]
+  [(i = i + 1, val = v) for (i, v) in enumerate(coords)]
 end
+# baxes(s) = [s.var; s.stmt.expr.args[2:end]]
 
 function getjoin!(v, b, ctx)
   # display(ctx.fwd2invmerged)
@@ -152,35 +153,39 @@ end
 function reversestatementssimple!(b::Block, invb::Block, ctx::PIContext, knownvars::Dict{Variable, Any})
   i(x) = x.i
   val(x) = x.val
+  isretvar(i) = i == 2
   
   methodid_ = methodid(ctx.ir)
 
   # In reverse order, for each statement 
-  for s in reverse(statements(b))
+  for vs in reverse(varstatements(b))
     # axes of all outputs that are variables
-    targetaxes = Axes{i.(filter(a -> a.i != 1 && isvar(a.val), saxes(s)))...}
+    targetaxes = places((i for (i, v) in enumplaces(vs) if isvar(v) && !isretvar(@show(i))))
+    @show targetaxes
+    # targetaxes = places Places{Tuple{i.(filter(a -> a.i != 1 && isvar(a.val), saxes(vs)))...}}
     # We know the fwd input and any constants
-    knownaxes = Axes{i.(filter(a -> a.i == 1 || !isvar(a.val), saxes(s)))...}
+    knownaxes = places((i for (i, v) in enumplaces(vs) if !isvar(v) || isretvar(i)))
+    # knownaxes = Places{Tuple{i.(filter(a -> a.i == 1 || !isvar(a.val), saxes(vs)))...}}
 
-    # @assert !isempty(ctx.fwd2inv[(s.var, invb.id)])
-    @assert haskey(knownvars, s.var) || !isempty(ctx.fwd2inv[(s.var, invb.id)])
-    if isvar(knownvars[s.var])
-      arg = getjoin!(s.var, invb, ctx) # zt : does this handle multiple merges, correctly?
+    # @assert !isempty(ctx.fwd2inv[(vs.var, invb.id)])
+    @assert haskey(knownvars, vs.var) || !isempty(ctx.fwd2inv[(vs.var, invb.id)])
+    if isvar(knownvars[vs.var])
+      arg = getjoin!(vs.var, invb, ctx) # zt : does this handle multiple merges, correctly?
     else
-      arg = knownvars[s.var]
+      arg = knownvars[vs.var]
     end
-    consts = val.(filter(a -> !isvar(a.val), saxes(s)))
+    consts = val.(filter(a -> !isvar(a.val), enumplaces(vs)))
     args = [arg; consts] # zt: rename args to inverse
 
     # Location
-    loc = Loc(methodid_, s.var)
+    loc = Loc(methodid_, vs.var)
 
-    invstmt = xcall(PI, :choose, ctx.paramarg, loc, head(s.stmt), stmtargtypes(s.stmt, ctx.vartypes),
+    invstmt = xcall(PI, :choose, ctx.paramarg, loc, head(vs.stmt), stmtargtypes(vs.stmt, ctx.vartypes),
                      targetaxes, knownaxes, args...)
     var = push!(invb, invstmt)
 
     # detuple
-    stmtvars_ = stmtvars(s.stmt)
+    stmtvars_ = stmtvars(vs.stmt)
     for (i, v) in enumerate(stmtvars_)
       v_ = push!(invb, xcall(Core, :getfield, var, i))
       add!(ctx.fwd2inv, v, invb.id, v_)
@@ -291,6 +296,3 @@ end
 @generated function choose(f, t::Type{T}, target::Type{<:Places}, known::Type{<:Places}, z, θ) where T
   return reorient(f, T, target, known)
 end
-
-# How to deal with loc here
-

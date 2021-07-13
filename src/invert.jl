@@ -1,3 +1,5 @@
+export invertapply, invertir
+
 """
 `invertapply(f, t::Type{<:Tuple}, z, θ)`
 
@@ -19,6 +21,14 @@ x, y, z = invertapply(f, Tuple{Float64, Float64, Float64}, 2.3, rand(3))
 """
 invertapply(f, t::Type{T}, z, θ) where {T<:Tuple} = 
   choose(f, t, places_from_argtypes(T), ZΘ, z, θ)
+
+"""
+`invertir(f, t::Type{T})`
+
+Produce inverse ast for method `f(::T)`
+"""
+invertir(f, t::Type{T}) where {T<:Tuple} = 
+  reorientir(typeof(f), t, ZΘ, :inputsfixme)
 
 @post length(T.parameters) == length(ret) "Output should be the right length"
 @post all(map(isa, ret, T.parameters)) "Each element of ret is correct type"
