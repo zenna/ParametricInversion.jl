@@ -39,21 +39,3 @@ places_from_argtypes(t::Type{Tuple{T1, T2, T3}}) where {T1, T2, T3} = A * B * C
 function places(s::Statement)
   Place(2:2+length(1:s.expr.args))
 end
-
-
-
-
-# "Indicates we have concrete values for some subset of the relation"
-# struct Concrete{T<:Axes, V<:Tuple}
-#   vals::V
-# end
-
-# Concrete{T}(v::V) where {T,V} = Concrete{T, V}(v)
-
-# const cA = Concrete{A}
-# const cB = Concrete{B}
-# const cC = Concrete{C}
-# const cAB = Concrete{AB}
-# const cBC = Concrete{BC}
-# const cABC = Concrete{ABC}
-

@@ -2,8 +2,8 @@ export cycle, cycleir, @cycle, @cycleir
 
 # zt - Fixme this is type unstable
 "`cycle(f, args...)` yields `xs_` such `f(xs_...) == f(args...)``"
-cycle(φ, f, args...) =
-  invertapply(f, Base.typesof(args...), f(args...), φ)
+cycle(θ, f, args...) =
+  invertinvoke(f, Base.typesof(args...), f(args...), θ)
 
 cycleir(f, args...) =
   invertir(typeof(f), Base.typesof(args...))

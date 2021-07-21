@@ -147,27 +147,22 @@ To answer these questions, we want to follow the approach layed about above.  Un
 
 The approach we will take is to __reoder__ f.
 
-First, let's see the SSA IR form of `f`:
+First, let's see the program in SSA form:
 
 ```julia
-julia> @code_ir g(1, 2)
-1: (%1, %2, %3)
-  %4 = %2 * %3
-  %5 = %4 + %2
-  return %5
+function f(a, b)
+  v1 = a * b
+  z = v1 + a
+  return z
+end
 ```
-
-Here `%2` corresponds to `a`, `%3` to `b`, and `%5` to `z`.  `%4` corresponds to the intermediate unnamed value `a * b`.
-
-
-
-In graphical form, this is:
-
 
 The basic idea behind parametric relational programming is that there is a great deal of flexibility in the order in which we execute statements.
 In this example, we know the value of the output $z$ and we want the inputs $a$ and $b$.
 
-Here are two possible strategies:
+Here's a possible two-step strategy:
+
+__Strategy 1:__
 
 1. Parametrically invert $+$ to yield values for $a$ and $v1$
 2. Parametrically invert $*$ to yield values for $a$ and $b$
@@ -176,12 +171,37 @@ If we produced two different values for $a$ in these steps then that is an incon
 
 But here's a better strategy that side steps this problem
 
+__Strategy 2:__
+
 1. Choose a value for $a$
 2. Invert $+$ to yield values for $v1$ given the values for $a$ and $v2$
 3. Invert $*$ to yield a value for $b$ given $a$
 
+The inconsistency has been avoided, by  construction.
+
+We can think of these two strategies as different ways to order the computation.  Let's write them in a slightly more formal language.
+
+__Strategy 1 (formal):__
+
+Inputs: z
+1. $v_1, a \leftarrow (+, z, \circ, \circ)$
+2. $a, b \leftarrow (*, v_1, \circ, \circ)$
+
+__Strategy 2 (formal):__
+
+Inputs: z
+1. $v_1, a \leftarrow (+, z, \circ, \circ)$
+3. $b \leftarrow (*, v_1, a, \circ)$
+
+__Definition__: An ordering of a procedure $f$ __[Whats a procedure?]__. is a sequence $(q_1, q_2, \dots q_n)$ where each $q_i = (R_i, G_i, P_i)$ is a tuple where $R$ is *__[the name of?]__* a relation, and both $G$ and $P$ are sets of variables __[Whats a variable?]__.
+
+For any particular ordering, there are a number of important properties that we would like it to satisfy"
+- Completeness.  Basically the variables used by each statement must be available, i.e. produced by a previosu variable or as an input
+- variable should only be produced once -- not so simple, if we have an example
+- Something someting else
 
 
+## Open Questions
 Q: Should we be able to reorient to internal values?
 
 -- Can assume we start with some knowns, which are inputs.

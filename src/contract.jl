@@ -27,15 +27,15 @@ codomain(f, t) = Any
 # zt - maybe its better to think of it as something else
 
 # zt - we only want to bother contracting if the function is contractable
-invertapply(traits::trait(Contract), f, t, y, ϕ) =
-  invertapply(f, t, contract(traits, codomain(f, t), y), ϕ)
+invertinvoke(traits::trait(Contract), f, t, y, ϕ) =
+  invertinvoke(f, t, contract(traits, codomain(f, t), y), ϕ)
 
 # move this into 
-invertapply(traits, f, t, y, ϕ) = 
-  invertapply(t, f, t, y, ϕ)
+invertinvoke(traits, f, t, y, ϕ) = 
+  invertinvoke(t, f, t, y, ϕ)
 
 # Handle this case, ...
-function invertapply(::typeof(dupl), t, y, ϕ::trait(contract))
+function invertinvoke(::typeof(dupl), t, y, ϕ::trait(contract))
 end
 
 # TODO
