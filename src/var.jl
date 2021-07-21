@@ -1,26 +1,39 @@
+export defθ
 
-"""
-Free Variable
-
-Like random variables, free variables are uncertain values.
-Unlike random variables the uncertainty is not quantified,
-no more value is more or less likely than any other.
-
-"""
-abstract type Var <: NonDetVar end
-
-# Primitive Free Variables
-struct Unit{T <: Real} <: Var
-  id::ID
+struct Var
+  data::Dict{Any, Any}
 end
 
-"`unit(T)` is a random variable over [0, 1]"
-unit(::Type{T} = Float64; id = uid()) where T = Unit{T}(id)
+struct VarProj{ID}
+  var::Var
+  loc::ID
+end
 
-solve(::Unit{T}) where T = rand(T)
+project(var, loc) = var
+unit(θ, T = Float64) = rand(T)
 
-"Find a solution to all the variables in the model that satisfies"
-function solve(x::Var) end
+# project(var, loc) = VarProj(var, loc)
+# Base.getindex(var::Var, id) = project(var, id)
 
-"Find a solution that maps the variable values to free"
-function optim(x::Var, ℓ) end
+# "Default paramter space"
+# defθ() = Var(Dict{Any, Any}())
+
+# function unit(vπ::VarProj, T = Float64)
+#   get!(() -> rand(T), vπ.var.data, (vπ.loc, unit, T))::T
+# end
+
+# function bools(vπ::VarProj)
+#   get!(() -> rand(Bool), vπ.var.data, (vπ.loc, bools))::T
+# end
+
+# function integers(vπ::VarProj, T = Int)
+#   get!(() -> rand(T), vπ.var.data, (vπ.loc, integers, T))::T
+# end
+
+# function addressmap(θ::Var)
+#   let ks = deepcopy(keys(θ))
+#     function (xs::AbstractVector)
+#       Dict{Any, Any}(ks[i] => xs[i] for i = 1:length(xs))
+#     end
+#   end
+# end

@@ -1,4 +1,7 @@
 using ParametricInversion
+using Pkg
+Pkg.develop(path = joinpath(pwd(), "ParametricInversionTestUtils"))
+
 using ParametricInversionTestUtils
 using Test
 using Random
