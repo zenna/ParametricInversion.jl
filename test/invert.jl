@@ -1,6 +1,5 @@
+using ParametricInversion
 using Test
-
-
 
 const ϵ = 0.000001
 
@@ -12,9 +11,9 @@ const ϵ = 0.000001
 end
 
 @testset "invert with constants" begin
-  f(x, y) = x * 2 + y * 3
-  out = 100
-  res = invertinvoke(f, (Float64, Float64), out, rand(2))
+  f(x, y) = x * 2.0 + y * 3.0
+  out = 100.0
+  res = invertinvoke(f, Tuple{Float64, Float64}, out, rand(2))
   @test f(res...) ≈ out atol=ϵ
 end
 
@@ -28,21 +27,6 @@ end
     f = e + d
     return f
   end
-  ParametricInversion.invertinvoketransform(typeof(g), Tuple{Float64, Float64})
-  invertinvoke(g, (Float64, Float64), 3, rand(10))
+  # ParametricInversion.invertinvoketransform(typeof(g), Tuple{Float64, Float64})
+  invertinvoke(g, Tuple{Float64, Float64}, 3, rand(10))
 end
-
-
-# @testset "Unusued argument" begin
-#   function g(x, y, z)
-#     a = x + y
-#     b = a + a
-#     c = a * a
-#     d = c + b
-#     e = y * a
-#     f = e + d
-#     return f
-#   end
-#   ParametricInversion.invertinvoketransform(typeof(g), Tuple{Int, Int, Int})
-#   invertinvoketransform(f, (Int, Int, Int), 3, rand(100))
-# end

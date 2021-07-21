@@ -8,7 +8,7 @@ choose(θ, ::typeof(+), ::Type{Tuple{Int, Int}}, ::Type{AB}, ::Type{Z}, z) =
   let θ_ = ℝ(θ) ; (z - θ_, θ_) end
 
 
-# *, / relation
+# *, / relation -- z = a * b
 choose(θ, ::typeof(*), ::Float64_2, ::Type{B}, ::Type{ZA}, z, a) = 
   (z / a,)
 
@@ -17,6 +17,9 @@ function choose(θ, ::typeof(*), ::Float64_2, ::Type{AB}, ::Type{Z}, z)
   v = ℝ(θ)
   b ? (z/v, v) : (v, z/v)
 end
+
+choose(θ, ::typeof(*), ::Float64_2, ::Type{A}, ::Type{ZB}, z, b) = 
+  (a = z / b,)
 
 choose(θ, ::typeof(/), ::Float64_2, ::Type{AB}, ::Type{Z}, z) =
   let r = ℝ(θ)
