@@ -63,6 +63,8 @@ function setup!(ir, invir)
   selfarg = IRTools.argument!(invb)     # self
   farg = IRTools.argument!(invb)        # f
   typearg = IRTools.argument!(invb)     # types
+  targetarg = IRTools.argument!(invb)   # Target
+  knownarg = IRTools.argument!(invb)    # Known
   invinarg = IRTools.argument!(invb)    # input to inverse
   paramarg = IRTools.argument!(invb)    # parameters
   cfg = build_cfg(ir)
@@ -98,16 +100,16 @@ end
 "Undo each operation statement `%a = f(%x, %y, %z)` in `b`, add to `invb`"
 function reversestatements!(b::Block, invb::Block, ctx::PIContext, knownvars::Dict{Variable, Any})
   for lhs in reverse(keys(b))
-    @show knownvars
-    @show stmt = b[lhs]
-    @show stmtvars_ = stmtvars(stmt)
-    @show unknownvars = setdiff(stmtvars_, knownvars)
-    @show axes = [stmtvars_; lhs]
+    knownvars
+    stmt = b[lhs]
+    stmtvars_ = stmtvars(stmt)
+    unknownvars = setdiff(stmtvars_, knownvars)
+    axes = [stmtvars_; lhs]
     f = stmt.expr.args[1]
     
-    @show axesids = [i for (i, axis) in enumerate(axes) if axis in unknownvars]
+    axesids = [i for (i, axis) in enumerate(axes) if axis in unknownvars]
     want = Places{Tuple{axesids...}}
-    @show atypes = stmtargtypes(stmt, ctx.vartypes)
+    atypes = stmtargtypes(stmt, ctx.vartypes)
     # getthething(stmt, axesids)
     inv_stmt = xcall(ParametricInversion, :choose, f, atypes, want, ctx.paramarg)
     union!(knownvars, unknownvars)
@@ -119,7 +121,7 @@ function reversestatements!(b::Block, invb::Block, ctx::PIContext, knownvars::Di
     ## Let's assume for the minute that we want all teh parameters
     ## Wanted vars is everything that's not constant
     ## 
-    println("\n")
+    # println("\n")
   end
   invb
 end
@@ -160,8 +162,8 @@ function reversestatementssimple!(b::Block, invb::Block, ctx::PIContext, knownva
   # In reverse order, for each statement 
   for vs in reverse(varstatements(b))
     # axes of all outputs that are variables
-    targetaxes = places((i for (i, v) in enumplaces(vs) if isvar(v) && !isretvar(@show(i))))
-    @show targetaxes
+    targetaxes = places((i for (i, v) in enumplaces(vs) if isvar(v) && !isretvar(i)))
+    # @show targetaxes
     # targetaxes = places Places{Tuple{i.(filter(a -> a.i != 1 && isvar(a.val), saxes(vs)))...}}
     # We know the fwd input and any constants
     knownaxes = places((i for (i, v) in enumplaces(vs) if !isvar(v) || isretvar(i)))
@@ -278,6 +280,12 @@ end
 reorientir(f::Function, types::NTuple{N, DataType}) where {N} = 
   reorientir(typeof(f), Base.to_tuple_type(types))
 
+function fixir!(ci)
+  isempty(ci.linetable) && push!(ci.linetable, Core.LineInfoNode(@__MODULE__, ci.parent, :something, 0, 0))
+  Core.Compiler.validate_code(ci)
+  ci
+end
+
 # TODO, will have to add target to this,
 # TODO: What about given.  There's the valus themselves, e.g. the input to
 # inverse in case of inversion, as well as the tpe of information
@@ -287,10 +295,12 @@ function reorient(f::Type{F}, t::Type{T}, target, known) where {F, T}
   # Finalize
   # zt - I wrote this (I think) but I'm not sure what they do?
   dummy() = return
-  argnames_ = [Symbol("#self#"), :f, :t, :arg, :θ]
+  argnames_ = [Symbol("#self#"), :f, :t, :target, :known, :arg, :θ]
   ci = code_lowered(dummy, Tuple{})[1]
   ci.slotnames = [argnames_...]
-  return update!(ci, invir)
+  ci = update!(ci, invir)
+  fixir!(ci)
+  ci
 end
 
 @generated function choose(f, t::Type{T}, target::Type{<:Places}, known::Type{<:Places}, z, θ) where T

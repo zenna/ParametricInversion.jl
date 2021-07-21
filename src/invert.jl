@@ -1,4 +1,4 @@
-export invertinvoke, invertir
+export invertinvoke, invertir, invertci
 
 """
 `invertinvoke(f, t::Type{<:Tuple}, z, θ)`
@@ -29,6 +29,10 @@ Produce inverse ast for method `f(::T)`
 """
 invertir(f, t::Type{T}) where {T<:Tuple} = 
   reorientir(typeof(f), t, ZΘ, :inputsfixme)
+
+"Produce inverse ::CodeInfo"
+invertci(f, t::Type{T}) where {T<:Tuple} = 
+  reorient(typeof(f), t, ZΘ, :inputsfixme)
 
 @post length(T.parameters) == length(ret) "Output should be the right length"
 @post all(map(isa, ret, T.parameters)) "Each element of ret is correct type"
