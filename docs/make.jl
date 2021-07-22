@@ -2,15 +2,14 @@ using Documenter, ParametricInversion
 
 makedocs(;
     modules=[ParametricInversion],
-    format=Documenter.HTML(),
+    format=Documenter.HTML(assets = String[]),
     pages=[
         "Home" => "index.md",
         "relation" => "relation.md",
     ],
     repo="https://github.com/zenna/ParametricInversion.jl/blob/{commit}{path}#L{line}",
     sitename="ParametricInversion.jl",
-    authors="Zenna Tavares",
-    assets=String[],
+    authors="Zenna Tavares"
 )
 
 deploydocs(;
