@@ -1,0 +1,10 @@
+name = "ParametricInversionEvaluation"
+uuid = "8a67531c-c446-47c3-ad27-c9b7414b7a09"
+authors = ["Zenna Tavares <zennatavares@gmail.com>"]
+version = "0.1.0"
+
+[deps]
+AndTraits = "fb24a613-cb95-4ee3-a029-2b7ba7763d4b"
+JuliaProgrammingPuzzles = "adc7a89d-a78b-4cf6-bbee-0eb0dd25b4e7"
+Mjolnir = "1154507a-7ac2-44fe-9f15-34617bca9db5"
+ParametricInversion = "6b46f060-7d60-4f37-b11d-8d056bd60d70"

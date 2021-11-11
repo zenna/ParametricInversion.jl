@@ -3,8 +3,9 @@ export reals, bools, integers, unit
 
 bools(θ) = unit(θ) > 0.5
 bound(θ, a, b, c) = unit(θ, T) * b - a + a
-reals(θ, T = Float64) = (unit(θ, T) - 0.5) * 100.0
+reals(θ, T = Float64) = (unit(θ, @show(T)) - 0.5) * 100.0
 integers(θ) = rand(Int64)
+finitechoice(θ, set::Tuple) = rand(set)
 
 const ℝ = reals
 const 𝔹 = bools

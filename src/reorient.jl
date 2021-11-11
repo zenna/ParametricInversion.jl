@@ -270,8 +270,13 @@ function invert(ir::IR)
   return invir
 end
 
+# Mjolnir.abstract(::Mjolnir.Basic, ::Mjolnir.AType{typeof(count)}, str, c) = (@show str; Int)
+Mjolnir.abstract(::Mjolnir.Basic, ::Mjolnir.AType{typeof(count)}, str, c) = (Core.println(str); Int)
 function reorientir(f::Type{F}, t::Type{T}, target, known) where {F, T}
+  # Core.println(" F ", F, " t ", t.parameters...)
+  # Core.println("abstract", Mjolnir.abstract(Mjolnir.Defaults(), typeof(count), String, String), "\n")
   fwdir = Mjolnir.trace(Mjolnir.Defaults(), F, t.parameters...)
+  # Core.println("fwd", fwdir)
   IRTools.explicitbranch!(fwdir)  # IR-transforms assumes no implicit branching
   fwdir |> IRTools.expand! |> IRTools.explicitbranch!
   invir = invert(fwdir)
